@@ -84,15 +84,17 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
     {
         for (int sample = 0; sample < samples; ++sample)
             for (int channel = 0; channel < channels; ++channel)
-                buffer.setSample(channel, sample,
-                    bypassDelay.processSample(channel, buffer.getSample(channel, sample)));
+            {
+                bypassDelay.pushSample(channel, buffer.getSample(channel, sample));
+                buffer.setSample(channel, sample, bypassDelay.popSample(channel));
+            }
         freeRunningSample += samples;
         return;
     }
 
     int64_t timelineSample = freeRunningSample;
-    if (auto* playHead = getPlayHead())
-        if (const auto position = playHead->getPosition())
+    if (auto* hostPlayHead = getPlayHead())
+        if (const auto position = hostPlayHead->getPosition())
             if (const auto hostSample = position->getTimeInSamples())
                 timelineSample = *hostSample;
 
