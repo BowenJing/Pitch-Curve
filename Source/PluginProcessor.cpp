@@ -28,6 +28,11 @@ void ContourAudioProcessor::prepareToPlay(double sampleRate, int maximumBlockSiz
     freeRunningSample = 0;
     stretcher.presetDefault(getTotalNumInputChannels(), sampleRate);
     stretcher.reset();
+    setLatencySamples(stretcher.outputLatency());
+    bypassDelay.prepare({ sampleRate, static_cast<juce::uint32>(maximumBlockSize),
+                          static_cast<juce::uint32>(getTotalNumInputChannels()) });
+    bypassDelay.reset();
+    bypassDelay.setDelay(static_cast<float>(getLatencySamples()));
     processed.setSize(getTotalNumOutputChannels(), maximumBlockSize, false, false, true);
     pitchSmoother.reset(sampleRate, 0.025);
     pitchSmoother.setCurrentAndTargetValue(0.0f);
@@ -77,6 +82,10 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
 
     if (points.empty() || duration <= 0.0f)
     {
+        for (int sample = 0; sample < samples; ++sample)
+            for (int channel = 0; channel < channels; ++channel)
+                buffer.setSample(channel, sample,
+                    bypassDelay.processSample(channel, buffer.getSample(channel, sample)));
         freeRunningSample += samples;
         return;
     }

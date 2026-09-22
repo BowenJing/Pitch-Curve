@@ -87,6 +87,9 @@ if(BUILD_TESTING)
         Source/PitchDetector.cpp
         Source/PitchDetector.h)
     target_include_directories(ContourTests PRIVATE Source)
+    target_compile_definitions(ContourTests PRIVATE
+        JUCE_USE_CURL=0
+        JUCE_WEB_BROWSER=0)
     target_link_libraries(ContourTests PRIVATE
         juce::juce_audio_basics
         juce::juce_core

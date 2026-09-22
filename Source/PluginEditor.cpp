@@ -209,7 +209,7 @@ void CurveEditor::timerCallback()
         const auto latest = processor.getContour();
         if (latest.size() != editablePoints.size()
             || (! latest.empty() && ! editablePoints.empty()
-                && latest.front().position != editablePoints.front().position))
+                && std::abs(latest.front().position - editablePoints.front().position) > 1.0e-6f))
             editablePoints = latest;
     }
     repaint();
@@ -312,9 +312,9 @@ void ContourAudioProcessorEditor::chooseFile()
     chooser = std::make_unique<juce::FileChooser>(
         "Choose a performance to learn", juce::File {},
         "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg");
-    const auto flags = juce::FileBrowserComponent::openMode
-                     | juce::FileBrowserComponent::canSelectFiles;
-    chooser->launchAsync(flags,
+    const auto browserFlags = juce::FileBrowserComponent::openMode
+                            | juce::FileBrowserComponent::canSelectFiles;
+    chooser->launchAsync(browserFlags,
         [safe = juce::Component::SafePointer<ContourAudioProcessorEditor>(this)]
         (const juce::FileChooser& fc)
     {

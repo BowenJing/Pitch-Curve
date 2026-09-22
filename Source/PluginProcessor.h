@@ -13,6 +13,7 @@ public:
     void prepareToPlay(double sampleRate, int maximumBlockSize) override;
     void releaseResources() override;
     bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
+    using juce::AudioProcessor::processBlock;
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     juce::AudioProcessorEditor* createEditor() override;
@@ -50,6 +51,7 @@ private:
     juce::AudioProcessorValueTreeState state;
     signalsmith::stretch::SignalsmithStretch<float> stretcher;
     juce::AudioBuffer<float> processed;
+    juce::dsp::DelayLine<float> bypassDelay { 65536 };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> pitchSmoother;
     double currentSampleRate = 44100.0;
     int64_t freeRunningSample = 0;
