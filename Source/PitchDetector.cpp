@@ -57,7 +57,10 @@ std::pair<float, float> PitchDetector::detectFrame(const float* samples,
         runningSum += difference[static_cast<size_t>(lag)];
         difference[static_cast<size_t>(lag)] =
             runningSum > 0.0f ? difference[static_cast<size_t>(lag)] * lag / runningSum : 1.0f;
+    }
 
+    for (int lag = minimumLag; lag <= maximumLag; ++lag)
+    {
         if (lag >= minimumLag && difference[static_cast<size_t>(lag)] < yinThreshold)
         {
             while (lag + 1 <= maximumLag
