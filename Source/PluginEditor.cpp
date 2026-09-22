@@ -297,7 +297,8 @@ bool ContourAudioProcessorEditor::isInterestedInFileDrag(const juce::StringArray
     if (files.isEmpty())
         return false;
     const auto extension = juce::File(files[0]).getFileExtension().toLowerCase();
-    return { ".wav", ".aif", ".aiff", ".flac", ".mp3", ".ogg" }.contains(extension);
+    return extension == ".wav" || extension == ".aif" || extension == ".aiff"
+        || extension == ".flac" || extension == ".mp3" || extension == ".ogg";
 }
 
 void ContourAudioProcessorEditor::filesDropped(const juce::StringArray& files, int, int)
@@ -313,7 +314,9 @@ void ContourAudioProcessorEditor::chooseFile()
         "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg");
     const auto flags = juce::FileBrowserComponent::openMode
                      | juce::FileBrowserComponent::canSelectFiles;
-    chooser->launchAsync(flags, [safe = juce::Component::SafePointer(this)] (const juce::FileChooser& fc)
+    chooser->launchAsync(flags,
+        [safe = juce::Component::SafePointer<ContourAudioProcessorEditor>(this)]
+        (const juce::FileChooser& fc)
     {
         if (safe != nullptr && fc.getResult().existsAsFile())
             safe->setSelectedFile(fc.getResult());
@@ -359,7 +362,7 @@ void ContourAudioProcessorEditor::run()
     if (threadShouldExit())
         return;
 
-    auto safe = juce::Component::SafePointer(this);
+    auto safe = juce::Component::SafePointer<ContourAudioProcessorEditor>(this);
     juce::MessageManager::callAsync([safe, result = std::move(analysis)] () mutable
     {
         if (safe == nullptr)
