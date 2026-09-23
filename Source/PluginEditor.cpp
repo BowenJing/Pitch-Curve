@@ -155,19 +155,64 @@ void CurveEditor::paint(juce::Graphics& g)
     g.drawVerticalLine(juce::roundToInt(playhead), bounds.getY(), bounds.getBottom());
 }
 
+void CurveEditor::ensureUniformEditablePoints()
+{
+    if (editablePointsAreUniform)
+        return;
+
+    constexpr int pointCount = 256;
+    if (editablePoints.empty())
+    {
+        editablePoints.reserve(pointCount);
+        for (int i = 0; i < pointCount; ++i)
+            editablePoints.push_back({ static_cast<float>(i) / (pointCount - 1), 0.0f, 1.0f });
+        editablePointsAreUniform = true;
+        return;
+    }
+
+    const auto source = editablePoints;
+    std::vector<PitchPoint> uniform;
+    uniform.reserve(pointCount);
+    for (int i = 0; i < pointCount; ++i)
+    {
+        const float position = static_cast<float>(i) / (pointCount - 1);
+        const auto upper = std::lower_bound(source.begin(), source.end(), position,
+            [] (const PitchPoint& point, float value) { return point.position < value; });
+
+        if (upper == source.begin())
+        {
+            uniform.push_back({ position, upper->cents, upper->confidence });
+            continue;
+        }
+        if (upper == source.end())
+        {
+            uniform.push_back({ position, source.back().cents, source.back().confidence });
+            continue;
+        }
+
+        const auto lower = upper - 1;
+        const float span = upper->position - lower->position;
+        const float proportion = span > 0.0f
+            ? (position - lower->position) / span
+            : 0.0f;
+        uniform.push_back({
+            position,
+            juce::jmap(proportion, lower->cents, upper->cents),
+            juce::jmap(proportion, lower->confidence, upper->confidence)
+        });
+    }
+
+    editablePoints = std::move(uniform);
+    editablePointsAreUniform = true;
+}
+
 void CurveEditor::drawAt(juce::Point<float> point)
 {
+    ensureUniformEditablePoints();
     const auto bounds = graphBounds();
     const float x = juce::jlimit(0.0f, 1.0f, (point.x - bounds.getX()) / bounds.getWidth());
     const float cents = centsFromY(point.y);
 
-    if (editablePoints.empty())
-    {
-        constexpr int pointCount = 160;
-        editablePoints.reserve(pointCount);
-        for (int i = 0; i < pointCount; ++i)
-            editablePoints.push_back({ static_cast<float>(i) / (pointCount - 1), 0.0f, 1.0f });
-    }
     const int index = juce::jlimit(0, static_cast<int>(editablePoints.size()) - 1,
                                    juce::roundToInt(x * (editablePoints.size() - 1)));
     const int radius = 3;
@@ -217,6 +262,7 @@ void CurveEditor::mouseDoubleClick(const juce::MouseEvent&)
 {
     previousDrawPosition.reset();
     editablePoints.clear();
+    editablePointsAreUniform = false;
     processor.setContour({}, processor.getContourDuration());
     repaint();
 }
@@ -229,6 +275,7 @@ void CurveEditor::timerCallback()
         if (revision != observedRevision)
         {
             editablePoints = processor.getContour();
+            editablePointsAreUniform = false;
             observedRevision = revision;
         }
     }
@@ -291,6 +338,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     fileName.setText("No Audio File", juce::dontSendNotification);
     fileName.setColour(juce::Label::textColourId, Palette::muted);
     fileName.setJustificationType(juce::Justification::centred);
+    fileName.setFont(juce::Font(juce::FontOptions(12.0f)));
     amountLabel.setText("AMOUNT", juce::dontSendNotification);
     amountLabel.setColour(juce::Label::textColourId, Palette::muted);
     amountLabel.setJustificationType(juce::Justification::centred);
@@ -328,7 +376,7 @@ ContourAudioProcessorEditor::~ContourAudioProcessorEditor()
 void ContourAudioProcessorEditor::paint(juce::Graphics& g)
 {
     g.fillAll(Palette::background);
-    auto dropArea = juce::Rectangle<float>(24.0f, 96.0f, getWidth() - 48.0f, 94.0f);
+    auto dropArea = juce::Rectangle<float>(24.0f, 92.0f, getWidth() - 48.0f, 110.0f);
     g.setColour(Palette::panel);
     g.fillRoundedRectangle(dropArea, 12.0f);
     g.setColour(Palette::muted.withAlpha(0.35f));
@@ -342,14 +390,16 @@ void ContourAudioProcessorEditor::resized()
     subtitle.setBounds(margin, 49, 240, 24);
     status.setBounds(getWidth() - 330, 27, 306, 28);
 
-    auto drop = juce::Rectangle<int>(margin, 108, getWidth() - margin * 2, 70);
-    fileButton.setBounds(drop.removeFromLeft(220));
-    learnButton.setBounds(drop.removeFromRight(180));
+    auto drop = juce::Rectangle<int>(margin, 102, getWidth() - margin * 2, 90);
+    const auto fileButtonArea = drop.removeFromLeft(220);
+    const auto learnButtonArea = drop.removeFromRight(180);
+    fileButton.setBounds(fileButtonArea.withSizeKeepingCentre(fileButtonArea.getWidth(), 70));
+    learnButton.setBounds(learnButtonArea.withSizeKeepingCentre(learnButtonArea.getWidth(), 70));
     auto preview = drop.reduced(16, 2);
     if (selectedFile.existsAsFile())
     {
-        fileName.setBounds(preview.removeFromTop(20));
-        waveform.setBounds(preview.reduced(0, 2));
+        fileName.setBounds(preview.removeFromTop(16));
+        waveform.setBounds(preview.reduced(0, 1));
     }
     else
     {
@@ -358,8 +408,8 @@ void ContourAudioProcessorEditor::resized()
     }
 
     const int controlWidth = 120;
-    auto content = juce::Rectangle<int>(margin, 210, getWidth() - margin * 2,
-                                        getHeight() - 234);
+    auto content = juce::Rectangle<int>(margin, 222, getWidth() - margin * 2,
+                                        getHeight() - 246);
     auto control = content.removeFromRight(controlWidth);
     curveEditor.setBounds(content.reduced(0, 0).withTrimmedRight(16));
     amount.setBounds(control.getX(), control.getCentreY() - 65, controlWidth, 120);

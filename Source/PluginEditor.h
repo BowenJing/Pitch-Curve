@@ -26,6 +26,7 @@ public:
 
 private:
     void timerCallback() override;
+    void ensureUniformEditablePoints();
     void drawAt(juce::Point<float>);
     juce::Rectangle<float> graphBounds() const;
     float centsFromY(float) const;
@@ -35,6 +36,7 @@ private:
     std::vector<PitchPoint> editablePoints;
     std::optional<juce::Point<float>> previousDrawPosition;
     uint64_t observedRevision = 0;
+    bool editablePointsAreUniform = false;
 };
 
 class AudioWaveformView final : public juce::Component,
