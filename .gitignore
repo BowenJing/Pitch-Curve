@@ -1,4 +1,9 @@
 /build/
+/_CPack_Packages/
+/Contour-*.deb
+/Contour-*.deb.sha256
+/Contour-*.tar.gz
+/Contour-*.tar.gz.sha256
 /.cache/
 *.jucer
 .DS_Store
