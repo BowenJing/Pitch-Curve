@@ -12,7 +12,8 @@ Defensive limits:
 
 - Imported audio is decoded to at most 60 seconds and 12 million samples.
 - Reader sample rates and channel counts are validated before allocation.
-- Analysis can be cancelled safely when the editor closes.
+- Decoding is split into bounded chunks and analysis checks cancellation
+  between frames when the editor closes.
 - Restored state is capped at 2 MiB and 4,096 validated contour points.
 - Non-finite and out-of-range contour values are discarded or clamped.
 - Unexpected oversized DAW blocks take the latency-matched bypass path rather

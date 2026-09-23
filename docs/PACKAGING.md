@@ -50,7 +50,7 @@ support MinGW.
 
 ```bash
 sudo apt-get install clang-20 clang-tools-20 lld-20 llvm-20 nsis
-cargo install xwin --locked
+cargo install xwin --version 0.10.0 --locked
 xwin --accept-license --arch x86_64 splat --output .xwin
 cmake -S . -B build-windows \
   -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/clang-cl-x64.cmake \
