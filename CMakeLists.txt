@@ -31,8 +31,14 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(signalsmith_stretch)
 
 set(CONTOUR_FORMATS VST3 Standalone)
+set(CONTOUR_VST3_AUTO_MANIFEST TRUE)
 if(APPLE)
     list(APPEND CONTOUR_FORMATS AU)
+endif()
+if(CMAKE_CROSSCOMPILING)
+    # JUCE's manifest scanner is a target executable and cannot run on the
+    # Linux build host. VST3 hosts support bundles without moduleinfo.json.
+    set(CONTOUR_VST3_AUTO_MANIFEST FALSE)
 endif()
 
 juce_add_plugin(Contour
@@ -47,6 +53,7 @@ juce_add_plugin(Contour
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
     COPY_PLUGIN_AFTER_BUILD FALSE
+    VST3_AUTO_MANIFEST ${CONTOUR_VST3_AUTO_MANIFEST}
     VST3_CATEGORIES "Fx" "Pitch Shift"
     AU_MAIN_TYPE "kAudioUnitType_Effect")
 
