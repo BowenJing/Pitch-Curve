@@ -371,27 +371,43 @@ void ContourAudioProcessorEditor::beginLearning()
 
 void ContourAudioProcessorEditor::run()
 {
-    juce::AudioFormatManager formats;
-    formats.registerBasicFormats();
-    std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(analysisFile));
     PitchAnalysis analysis;
-
-    if (reader != nullptr && ! threadShouldExit()
-        && std::isfinite(reader->sampleRate)
-        && reader->sampleRate >= 8000.0 && reader->sampleRate <= 768000.0
-        && reader->lengthInSamples > 0 && reader->numChannels > 0)
+    try
     {
-        constexpr double maximumLengthSeconds = 60.0;
-        constexpr int64_t maximumDecodedSamples = 12000000;
-        const auto sampleCount = static_cast<int>(juce::jmin<int64_t>(
-            reader->lengthInSamples,
-            juce::jmin<int64_t>(maximumDecodedSamples,
-                static_cast<int64_t>(reader->sampleRate * maximumLengthSeconds))));
-        juce::AudioBuffer<float> audio(
-            juce::jlimit(1, 2, static_cast<int>(reader->numChannels)), sampleCount);
-        if (reader->read(&audio, 0, sampleCount, 0, true, true) && ! threadShouldExit())
-            analysis = PitchDetector::analyse(audio, reader->sampleRate, 55.0f, 1600.0f,
-                                               [this] { return threadShouldExit(); });
+        juce::AudioFormatManager formats;
+        formats.registerBasicFormats();
+        std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(analysisFile));
+
+        if (reader != nullptr && ! threadShouldExit()
+            && std::isfinite(reader->sampleRate)
+            && reader->sampleRate >= 8000.0 && reader->sampleRate <= 768000.0
+            && reader->lengthInSamples > 0 && reader->numChannels > 0)
+        {
+            constexpr double maximumLengthSeconds = 60.0;
+            constexpr int64_t maximumDecodedSamples = 12000000;
+            constexpr int decodeChunkSamples = 65536;
+            const auto sampleCount = static_cast<int>(juce::jmin<int64_t>(
+                reader->lengthInSamples,
+                juce::jmin<int64_t>(maximumDecodedSamples,
+                    static_cast<int64_t>(reader->sampleRate * maximumLengthSeconds))));
+            juce::AudioBuffer<float> audio(
+                juce::jlimit(1, 2, static_cast<int>(reader->numChannels)), sampleCount);
+            bool readSucceeded = true;
+            for (int offset = 0; offset < sampleCount && readSucceeded; offset += decodeChunkSamples)
+            {
+                if (threadShouldExit())
+                    return;
+                const int chunk = juce::jmin(decodeChunkSamples, sampleCount - offset);
+                readSucceeded = reader->read(&audio, offset, chunk, offset, true, true);
+            }
+            if (readSucceeded && ! threadShouldExit())
+                analysis = PitchDetector::analyse(audio, reader->sampleRate, 55.0f, 1600.0f,
+                                                   [this] { return threadShouldExit(); });
+        }
+    }
+    catch (...)
+    {
+        analysis = {};
     }
 
     if (threadShouldExit())

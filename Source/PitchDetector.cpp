@@ -7,6 +7,7 @@ namespace
 {
 constexpr int frameSize = 2048;
 constexpr int hopSize = 256;
+constexpr double maximumAnalysisSampleRate = 48000.0;
 
 float median(std::vector<float> values)
 {
@@ -16,6 +17,43 @@ float median(std::vector<float> values)
     const auto middle = values.begin() + static_cast<std::ptrdiff_t>(values.size() / 2);
     std::nth_element(values.begin(), middle, values.end());
     return *middle;
+}
+
+juce::AudioBuffer<float> downsampleForAnalysis(const juce::AudioBuffer<float>& input,
+                                                double sourceRate,
+                                                std::function<bool()>& shouldCancel)
+{
+    const double ratio = sourceRate / maximumAnalysisSampleRate;
+    const int outputSamples = static_cast<int>(
+        std::floor(static_cast<double>(input.getNumSamples()) / ratio));
+    juce::AudioBuffer<float> output(1, juce::jmax(0, outputSamples));
+
+    for (int outputSample = 0; outputSample < outputSamples; ++outputSample)
+    {
+        if ((outputSample & 1023) == 0 && shouldCancel && shouldCancel())
+            return {};
+
+        const double start = outputSample * ratio;
+        const double end = juce::jmin(static_cast<double>(input.getNumSamples()),
+                                      (outputSample + 1) * ratio);
+        const int firstInput = static_cast<int>(std::floor(start));
+        const int finalInput = static_cast<int>(std::ceil(end));
+        double sum = 0.0;
+        double totalWeight = 0.0;
+        for (int inputSample = firstInput; inputSample < finalInput; ++inputSample)
+        {
+            const double weight = juce::jmax(
+                0.0, juce::jmin(end, inputSample + 1.0) - juce::jmax(start, static_cast<double>(inputSample)));
+            if (inputSample >= 0 && inputSample < input.getNumSamples())
+            {
+                sum += input.getSample(0, inputSample) * weight;
+                totalWeight += weight;
+            }
+        }
+        output.setSample(0, outputSample,
+                         totalWeight > 0.0 ? static_cast<float>(sum / totalWeight) : 0.0f);
+    }
+    return output;
 }
 }
 
@@ -27,6 +65,8 @@ std::pair<float, float> PitchDetector::detectFrame(const float* samples,
 {
     const int minimumLag = juce::jmax(2, static_cast<int>(sampleRate / maximumHz));
     const int maximumLag = juce::jmin(size / 2, static_cast<int>(sampleRate / minimumHz));
+    if (minimumLag > maximumLag)
+        return {};
     std::vector<float> difference(static_cast<size_t>(maximumLag + 1), 0.0f);
 
     double energy = 0.0;
@@ -94,8 +134,13 @@ std::pair<float, float> PitchDetector::detectFrame(const float* samples,
             refinedLag += 0.5f * (left - right) / denominator;
     }
 
-    return { static_cast<float>(sampleRate) / refinedLag,
-             juce::jlimit(0.0f, 1.0f, 1.0f - selectedValue) };
+    if (! std::isfinite(refinedLag) || refinedLag <= 0.0f)
+        return {};
+    const float frequency = static_cast<float>(sampleRate) / refinedLag;
+    const float confidence = juce::jlimit(0.0f, 1.0f, 1.0f - selectedValue);
+    return std::isfinite(frequency) && std::isfinite(confidence)
+        ? std::pair<float, float> { frequency, confidence }
+        : std::pair<float, float> {};
 }
 
 PitchAnalysis PitchDetector::analyse(const juce::AudioBuffer<float>& audio,
@@ -119,21 +164,34 @@ PitchAnalysis PitchDetector::analyse(const juce::AudioBuffer<float>& audio,
         mono.addFrom(0, 0, audio, channel, 0, audio.getNumSamples(),
                      1.0f / static_cast<float>(audio.getNumChannels()));
 
+    juce::AudioBuffer<float> downsampled;
+    const juce::AudioBuffer<float>* analysisAudio = &mono;
+    double analysisSampleRate = sampleRate;
+    if (sampleRate > maximumAnalysisSampleRate)
+    {
+        downsampled = downsampleForAnalysis(mono, sampleRate, shouldCancel);
+        if (downsampled.getNumSamples() == 0)
+            return {};
+        analysisAudio = &downsampled;
+        analysisSampleRate = maximumAnalysisSampleRate;
+    }
+
     struct Detection { float position; float hz; float confidence; };
     std::vector<Detection> detections;
     std::vector<float> frequencies;
 
-    for (int start = 0; start + frameSize <= mono.getNumSamples(); start += hopSize)
+    for (int start = 0; start + frameSize <= analysisAudio->getNumSamples(); start += hopSize)
     {
         if (shouldCancel && shouldCancel())
             return {};
 
         const auto [frequency, confidence] =
-            detectFrame(mono.getReadPointer(0, start), frameSize, sampleRate, minimumHz, maximumHz);
+            detectFrame(analysisAudio->getReadPointer(0, start), frameSize,
+                        analysisSampleRate, minimumHz, maximumHz);
         if (frequency > 0.0f && confidence >= 0.65f)
         {
             const float position = static_cast<float>(start + frameSize / 2)
-                                 / static_cast<float>(mono.getNumSamples());
+                                 / static_cast<float>(analysisAudio->getNumSamples());
             detections.push_back({ position, frequency, confidence });
             frequencies.push_back(frequency);
         }

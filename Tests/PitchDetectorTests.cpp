@@ -45,6 +45,27 @@ int main()
         return 1;
     }
 
+    constexpr double highSampleRate = 192000.0;
+    juce::AudioBuffer<float> highRateAudio(1, static_cast<int>(highSampleRate));
+    phase = 0.0;
+    for (int sample = 0; sample < highRateAudio.getNumSamples(); ++sample)
+    {
+        const double time = sample / highSampleRate;
+        const double cents = 25.0 * std::sin(juce::MathConstants<double>::twoPi * 4.0 * time);
+        const double frequency = 110.0 * std::pow(2.0, cents / 1200.0);
+        phase += juce::MathConstants<double>::twoPi * frequency / highSampleRate;
+        highRateAudio.setSample(0, sample, static_cast<float>(0.7 * std::sin(phase)));
+    }
+    const auto highRateResult = PitchDetector::analyse(highRateAudio, highSampleRate);
+    if (highRateResult.points.size() < 50
+        || std::abs(highRateResult.referenceHz - 110.0f) > 3.0f)
+    {
+        std::cerr << "High-rate low pitch analysis failed: "
+                  << highRateResult.referenceHz << " Hz, "
+                  << highRateResult.points.size() << " points\n";
+        return 1;
+    }
+
     juce::AudioBuffer<float> silence(1, 4096);
     silence.clear();
     if (! PitchDetector::analyse(silence, sampleRate).points.empty())
@@ -56,6 +77,12 @@ int main()
     if (! PitchDetector::analyse(audio, 0.0).points.empty())
     {
         std::cerr << "Invalid sample rates must be rejected\n";
+        return 1;
+    }
+
+    if (! PitchDetector::analyse(audio, sampleRate, 20000.0f, 30000.0f).points.empty())
+    {
+        std::cerr << "An impossible lag range must be rejected\n";
         return 1;
     }
 
