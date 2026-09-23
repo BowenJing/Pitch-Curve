@@ -167,10 +167,12 @@ elseif(WIN32)
     set(CPACK_NSIS_PACKAGE_NAME "Contour")
     set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-    set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS
-        "nsExec::ExecToLog 'xcopy /E /I /Y \"$INSTDIR\\VST3\\Contour.vst3\" \"$COMMONFILES64\\VST3\\Contour.vst3\"'")
-    set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS
-        "RMDir /r \"$COMMONFILES64\\VST3\\Contour.vst3\"")
+    set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [=[
+nsExec::ExecToLog 'xcopy /E /I /Y \"$INSTDIR\\VST3\\Contour.vst3\" \"$COMMONFILES64\\VST3\\Contour.vst3\"'
+]=])
+    set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS [=[
+RMDir /r \"$COMMONFILES64\\VST3\\Contour.vst3\"
+]=])
 else()
     set(CPACK_GENERATOR "DEB;TGZ")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
