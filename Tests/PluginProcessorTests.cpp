@@ -121,12 +121,48 @@ bool testContourWithOversizedBlocks()
     }
     return true;
 }
+
+bool testStateRoundTripAndBounds()
+{
+    ContourAudioProcessor source;
+    source.setContour({ { 0.2f, -20.0f, 0.8f }, { 0.8f, 30.0f, 0.9f } }, 3.5f);
+    if (auto* amount = source.parameters().getParameter("amount"))
+        amount->setValueNotifyingHost(amount->convertTo0to1(1.5f));
+
+    juce::MemoryBlock state;
+    source.getStateInformation(state);
+    ContourAudioProcessor restored;
+    restored.setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    const auto restoredCurve = restored.getContour();
+    if (restoredCurve.size() != 4
+        || std::abs(restoredCurve.front().position) > 1.0e-6f
+        || std::abs(restoredCurve.back().position - 1.0f) > 1.0e-6f
+        || std::abs(restoredCurve.front().cents - restoredCurve.back().cents) > 1.0e-6f
+        || std::abs(restored.getContourDuration() - 3.5f) > 1.0e-6f)
+    {
+        std::cerr << "Contour state did not round-trip safely\n";
+        return false;
+    }
+
+    constexpr size_t oversizedStateBytes = 2 * 1024 * 1024 + 1;
+    juce::MemoryBlock oversizedState(oversizedStateBytes, true);
+    restored.setStateInformation(oversizedState.getData(),
+                                 static_cast<int>(oversizedState.getSize()));
+    if (restored.getContour().size() != restoredCurve.size())
+    {
+        std::cerr << "Oversized state must be rejected without changing the contour\n";
+        return false;
+    }
+    return true;
+}
 }
 
 int main()
 {
     juce::ScopedJuceInitialiser_GUI initialiseJuce;
-    if (! testLatencyMatchedBypass() || ! testContourWithOversizedBlocks())
+    if (! testLatencyMatchedBypass()
+        || ! testContourWithOversizedBlocks()
+        || ! testStateRoundTripAndBounds())
         return 1;
 
     std::cout << "Processor safety tests passed\n";
