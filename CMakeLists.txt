@@ -59,6 +59,27 @@ juce_add_plugin(Contour
 
 juce_generate_juce_header(Contour)
 
+if(CMAKE_CROSSCOMPILING AND WIN32)
+    find_program(WINE_EXECUTABLE wine REQUIRED)
+    if(NOT TARGET Contour_vst3_helper)
+        message(FATAL_ERROR "JUCE did not create the VST3 manifest helper target")
+    endif()
+
+    set(CONTOUR_VST3_MANIFEST
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Contour.vst3/Contents/Resources/moduleinfo.json")
+    add_dependencies(Contour_VST3 Contour_vst3_helper)
+    add_custom_command(TARGET Contour_VST3 POST_BUILD
+        COMMAND "${CMAKE_COMMAND}"
+            "-DHELPER=$<TARGET_FILE:Contour_vst3_helper>"
+            "-DWINE=${WINE_EXECUTABLE}"
+            "-DOUTPUT=${CONTOUR_VST3_MANIFEST}"
+            "-DEXPECTED_NAME=${PROJECT_NAME}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateVST3Manifest.cmake"
+        BYPRODUCTS "${CONTOUR_VST3_MANIFEST}"
+        COMMENT "Generating Windows VST3 moduleinfo.json with Wine"
+        VERBATIM)
+endif()
+
 target_sources(Contour PRIVATE
     Source/PitchDetector.cpp
     Source/PitchDetector.h

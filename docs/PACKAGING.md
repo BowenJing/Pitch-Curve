@@ -45,11 +45,11 @@ directory. Sign binaries and the final installer with Authenticode before
 public release.
 
 For an unsigned x64 development build from Debian/Ubuntu, use LLVM 20,
-Microsoft's CRT/SDK acquired with `xwin`, and NSIS. JUCE 8 explicitly does not
-support MinGW.
+Microsoft's CRT/SDK acquired with `xwin`, Wine (to run JUCE's Windows VST3
+manifest helper), and NSIS. JUCE 8 explicitly does not support MinGW.
 
 ```bash
-sudo apt-get install clang-20 clang-tools-20 lld-20 llvm-20 nsis
+sudo apt-get install clang-20 clang-tools-20 lld-20 llvm-20 nsis wine
 cargo install xwin --version 0.10.0 --locked
 xwin --accept-license --arch x86_64 splat --output .xwin
 cmake -S . -B build-windows \
