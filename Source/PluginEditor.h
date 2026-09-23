@@ -32,7 +32,7 @@ private:
 
     ContourAudioProcessor& processor;
     std::vector<PitchPoint> editablePoints;
-    bool isDrawing = false;
+    uint64_t observedRevision = 0;
 };
 
 class ContourAudioProcessorEditor final : public juce::AudioProcessorEditor,
@@ -66,6 +66,7 @@ private:
     juce::Label amountLabel;
     juce::Slider amount;
     juce::File selectedFile;
+    juce::File analysisFile;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> amountAttachment;
     std::atomic<bool> analysing { false };

@@ -1,0 +1,71 @@
+name: Build installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: >
+          sudo apt-get update &&
+          sudo apt-get install -y
+          build-essential libasound2-dev libjack-jackd2-dev libx11-dev
+          libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev
+          libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+      - run: cmake --build build --parallel 2
+      - run: ctest --test-dir build --output-on-failure
+      - run: cpack --config build/CPackConfig.cmake -G DEB
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contour-linux-x64
+          path: |
+            Contour-*.deb
+            Contour-*.sha256
+
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: >
+          cmake -S . -B build -G Xcode -DBUILD_TESTING=ON
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+      - run: cmake --build build --config Release --parallel 2
+      - run: ctest --test-dir build -C Release --output-on-failure
+      - run: cpack --config build/CPackConfig.cmake -C Release -G productbuild
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contour-macos-universal
+          path: |
+            Contour-*.pkg
+            Contour-*.sha256
+
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [x64, ARM64]
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - run: >
+          cmake -S . -B build -G "Visual Studio 17 2022"
+          -A ${{ matrix.architecture }} -DBUILD_TESTING=ON
+      - run: cmake --build build --config Release --parallel 2
+      - if: matrix.architecture == 'x64'
+        run: ctest --test-dir build -C Release --output-on-failure
+      - run: cpack --config build/CPackConfig.cmake -C Release -G NSIS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contour-windows-${{ matrix.architecture }}
+          path: |
+            Contour-*.exe
+            Contour-*.sha256

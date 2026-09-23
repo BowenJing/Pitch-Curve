@@ -34,6 +34,7 @@ public:
     void setContour(std::vector<PitchPoint> points, float durationSeconds);
     std::vector<PitchPoint> getContour() const;
     float getContourDuration() const;
+    uint64_t getContourRevision() const noexcept { return contourRevision.load(); }
     float getPlayheadPosition() const noexcept { return displayPosition.load(); }
     juce::AudioProcessorValueTreeState& parameters() noexcept { return state; }
 
@@ -57,6 +58,7 @@ private:
     int64_t freeRunningSample = 0;
 
     std::shared_ptr<const CurveData> curveData = std::make_shared<const CurveData>();
+    std::atomic<uint64_t> contourRevision { 0 };
     std::atomic<float> displayPosition { 0.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ContourAudioProcessor)

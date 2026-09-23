@@ -4,7 +4,7 @@ Contour is a cross-platform audio plug-in that captures the small pitch movement
 of one performance and applies them to another. A contour can also be drawn
 directly in the editor.
 
-## Current feature slice
+## Version 0.2
 
 - Drag or browse for WAV, AIFF, FLAC, MP3, or OGG audio.
 - YIN-based monophonic pitch tracking with confidence gating and median
@@ -16,6 +16,10 @@ directly in the editor.
 - Signalsmith Stretch high-quality, phase-coherent pitch processing.
 - VST3 and standalone builds on macOS and Windows; Audio Unit builds on macOS.
 - Session state restores both the parameter and learned/drawn contour.
+- Defensive file/state limits, cancellable analysis, and safe oversized-block
+  fallback.
+- Native package definitions for Linux, macOS Universal, Windows x64, and
+  Windows ARM64.
 
 This first version is intentionally for **monophonic material** such as vocals,
 bass, leads, and solo instruments. Reliable extraction of independent pitch
@@ -34,6 +38,9 @@ ctest --test-dir build -C Release --output-on-failure
 ```
 
 Build products are written beneath `build/Contour_artefacts/`.
+Installer commands and signing requirements are documented in
+[`docs/PACKAGING.md`](docs/PACKAGING.md). Runtime threat boundaries and the
+dependency review are documented in [`SECURITY.md`](SECURITY.md).
 
 ### macOS
 
@@ -64,7 +71,7 @@ the only DSP stage is the pitch transposer; there is no EQ, compression,
 saturation, stereo widening, or hidden gain processing. Pitch commands use a
 25 ms ramp to avoid zipper noise.
 
-No time-domain pitch shifter can promise zero artifacts for every signal. This
+No pitch shifter can promise zero artifacts for every signal. This
 implementation uses Signalsmith Stretch's phase-coherent spectral processing,
 which is designed to avoid the transient smearing and inter-channel phase
 instability typical of simpler shifters. Keep movement moderate for the most
@@ -72,6 +79,6 @@ transparent result.
 
 ## Licensing
 
-JUCE is dual-licensed (AGPLv3/commercial). Choose a JUCE license compatible with
-your distribution model before shipping a closed-source product. Signalsmith
-Stretch is MIT licensed; see its upstream repository for details.
+This repository and its unsigned development packages use JUCE's AGPLv3 option.
+Choose a commercial JUCE licence and review all project rights before shipping
+a closed-source product. Signalsmith Stretch is MIT licensed. See `LICENSE`.

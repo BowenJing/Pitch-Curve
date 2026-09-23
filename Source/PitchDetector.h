@@ -22,7 +22,8 @@ public:
     static PitchAnalysis analyse(const juce::AudioBuffer<float>& audio,
                                  double sampleRate,
                                  float minimumHz = 55.0f,
-                                 float maximumHz = 1600.0f);
+                                 float maximumHz = 1600.0f,
+                                 std::function<bool()> shouldCancel = {});
 
 private:
     static std::pair<float, float> detectFrame(const float* samples,

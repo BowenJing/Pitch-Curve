@@ -66,6 +66,7 @@ void ContourLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& b
 CurveEditor::CurveEditor(ContourAudioProcessor& owner) : processor(owner)
 {
     editablePoints = processor.getContour();
+    observedRevision = processor.getContourRevision();
     setMouseCursor(juce::MouseCursor::CrosshairCursor);
     startTimerHz(30);
 }
@@ -160,16 +161,13 @@ void CurveEditor::drawAt(juce::Point<float> point)
     const float x = juce::jlimit(0.0f, 1.0f, (point.x - bounds.getX()) / bounds.getWidth());
     const float cents = centsFromY(point.y);
 
-    if (! isDrawing)
+    if (editablePoints.empty())
     {
-        editablePoints.clear();
         constexpr int pointCount = 160;
         editablePoints.reserve(pointCount);
         for (int i = 0; i < pointCount; ++i)
             editablePoints.push_back({ static_cast<float>(i) / (pointCount - 1), 0.0f, 1.0f });
-        isDrawing = true;
     }
-
     const int index = juce::jlimit(0, static_cast<int>(editablePoints.size()) - 1,
                                    juce::roundToInt(x * (editablePoints.size() - 1)));
     const int radius = 3;
@@ -186,7 +184,6 @@ void CurveEditor::drawAt(juce::Point<float> point)
 
 void CurveEditor::mouseDown(const juce::MouseEvent& event)
 {
-    isDrawing = false;
     drawAt(event.position);
 }
 
@@ -206,11 +203,12 @@ void CurveEditor::timerCallback()
 {
     if (! isMouseButtonDown())
     {
-        const auto latest = processor.getContour();
-        if (latest.size() != editablePoints.size()
-            || (! latest.empty() && ! editablePoints.empty()
-                && std::abs(latest.front().position - editablePoints.front().position) > 1.0e-6f))
-            editablePoints = latest;
+        const auto revision = processor.getContourRevision();
+        if (revision != observedRevision)
+        {
+            editablePoints = processor.getContour();
+            observedRevision = revision;
+        }
     }
     repaint();
 }
@@ -257,7 +255,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
 ContourAudioProcessorEditor::~ContourAudioProcessorEditor()
 {
     signalThreadShouldExit();
-    stopThread(3000);
+    stopThread(10000);
     setLookAndFeel(nullptr);
 }
 
@@ -335,8 +333,10 @@ void ContourAudioProcessorEditor::beginLearning()
 {
     if (! selectedFile.existsAsFile() || analysing.exchange(true))
         return;
+    analysisFile = selectedFile;
     status.setText("Listening for pitch movement…", juce::dontSendNotification);
     learnButton.setEnabled(false);
+    fileButton.setEnabled(false);
     startThread();
 }
 
@@ -344,19 +344,25 @@ void ContourAudioProcessorEditor::run()
 {
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
-    std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(selectedFile));
+    std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(analysisFile));
     PitchAnalysis analysis;
 
-    if (reader != nullptr && ! threadShouldExit())
+    if (reader != nullptr && ! threadShouldExit()
+        && std::isfinite(reader->sampleRate)
+        && reader->sampleRate >= 8000.0 && reader->sampleRate <= 768000.0
+        && reader->lengthInSamples > 0 && reader->numChannels > 0)
     {
-        constexpr double maximumLengthSeconds = 300.0;
-        const auto sampleCount = static_cast<int>(
-            juce::jmin<int64_t>(reader->lengthInSamples,
-                static_cast<int64_t>(reader->sampleRate * maximumLengthSeconds)));
+        constexpr double maximumLengthSeconds = 60.0;
+        constexpr int64_t maximumDecodedSamples = 12000000;
+        const auto sampleCount = static_cast<int>(juce::jmin<int64_t>(
+            reader->lengthInSamples,
+            juce::jmin<int64_t>(maximumDecodedSamples,
+                static_cast<int64_t>(reader->sampleRate * maximumLengthSeconds))));
         juce::AudioBuffer<float> audio(
             juce::jlimit(1, 2, static_cast<int>(reader->numChannels)), sampleCount);
         if (reader->read(&audio, 0, sampleCount, 0, true, true) && ! threadShouldExit())
-            analysis = PitchDetector::analyse(audio, reader->sampleRate);
+            analysis = PitchDetector::analyse(audio, reader->sampleRate, 55.0f, 1600.0f,
+                                               [this] { return threadShouldExit(); });
     }
 
     if (threadShouldExit())
@@ -369,6 +375,7 @@ void ContourAudioProcessorEditor::run()
             return;
         safe->analysing.store(false);
         safe->learnButton.setEnabled(true);
+        safe->fileButton.setEnabled(true);
         if (result.points.empty())
         {
             safe->status.setText("No stable pitch found — try a monophonic source",

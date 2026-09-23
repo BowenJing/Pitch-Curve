@@ -101,12 +101,17 @@ std::pair<float, float> PitchDetector::detectFrame(const float* samples,
 PitchAnalysis PitchDetector::analyse(const juce::AudioBuffer<float>& audio,
                                      double sampleRate,
                                      float minimumHz,
-                                     float maximumHz)
+                                     float maximumHz,
+                                     std::function<bool()> shouldCancel)
 {
     PitchAnalysis result;
-    result.durationSeconds = static_cast<float>(audio.getNumSamples() / sampleRate);
-    if (audio.getNumSamples() < frameSize || sampleRate <= 0.0)
+    if (! std::isfinite(sampleRate) || sampleRate < 8000.0 || sampleRate > 768000.0
+        || ! std::isfinite(minimumHz) || ! std::isfinite(maximumHz)
+        || minimumHz <= 0.0f || maximumHz <= minimumHz
+        || audio.getNumChannels() <= 0 || audio.getNumSamples() < frameSize)
         return result;
+
+    result.durationSeconds = static_cast<float>(audio.getNumSamples() / sampleRate);
 
     juce::AudioBuffer<float> mono(1, audio.getNumSamples());
     mono.clear();
@@ -120,6 +125,9 @@ PitchAnalysis PitchDetector::analyse(const juce::AudioBuffer<float>& audio,
 
     for (int start = 0; start + frameSize <= mono.getNumSamples(); start += hopSize)
     {
+        if (shouldCancel && shouldCancel())
+            return {};
+
         const auto [frequency, confidence] =
             detectFrame(mono.getReadPointer(0, start), frameSize, sampleRate, minimumHz, maximumHz);
         if (frequency > 0.0f && confidence >= 0.65f)

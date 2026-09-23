@@ -53,6 +53,25 @@ int main()
         return 1;
     }
 
+    if (! PitchDetector::analyse(audio, 0.0).points.empty())
+    {
+        std::cerr << "Invalid sample rates must be rejected\n";
+        return 1;
+    }
+
+    bool cancellationChecked = false;
+    const auto cancelled = PitchDetector::analyse(
+        audio, sampleRate, 55.0f, 1600.0f, [&cancellationChecked]
+        {
+            cancellationChecked = true;
+            return true;
+        });
+    if (! cancellationChecked || ! cancelled.points.empty())
+    {
+        std::cerr << "Cancelled analysis must stop without a partial result\n";
+        return 1;
+    }
+
     std::cout << "Pitch detector tests passed\n";
     return 0;
 }

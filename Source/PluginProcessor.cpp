@@ -29,11 +29,13 @@ void ContourAudioProcessor::prepareToPlay(double sampleRate, int maximumBlockSiz
     stretcher.presetDefault(getTotalNumInputChannels(), sampleRate);
     stretcher.reset();
     setLatencySamples(stretcher.outputLatency());
+    bypassDelay.setMaximumDelayInSamples(juce::jmax(1, getLatencySamples() + 1));
     bypassDelay.prepare({ sampleRate, static_cast<juce::uint32>(maximumBlockSize),
                           static_cast<juce::uint32>(getTotalNumInputChannels()) });
     bypassDelay.reset();
     bypassDelay.setDelay(static_cast<float>(getLatencySamples()));
-    processed.setSize(getTotalNumOutputChannels(), maximumBlockSize, false, false, true);
+    processed.setSize(getTotalNumOutputChannels(), juce::jmax(1, maximumBlockSize),
+                      false, false, true);
     pitchSmoother.reset(sampleRate, 0.025);
     pitchSmoother.setCurrentAndTargetValue(0.0f);
 }
@@ -80,14 +82,19 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
     const auto& points = currentCurve->points;
     const float duration = currentCurve->durationSeconds;
 
-    if (points.empty() || duration <= 0.0f)
+    const bool canProcessContour = ! points.empty() && duration > 0.0f
+                                && samples <= processed.getNumSamples();
+    for (int sample = 0; sample < samples; ++sample)
+        for (int channel = 0; channel < channels; ++channel)
+        {
+            bypassDelay.pushSample(channel, buffer.getSample(channel, sample));
+            const float delayed = bypassDelay.popSample(channel);
+            if (! canProcessContour)
+                buffer.setSample(channel, sample, delayed);
+        }
+
+    if (! canProcessContour)
     {
-        for (int sample = 0; sample < samples; ++sample)
-            for (int channel = 0; channel < channels; ++channel)
-            {
-                bypassDelay.pushSample(channel, buffer.getSample(channel, sample));
-                buffer.setSample(channel, sample, bypassDelay.popSample(channel));
-            }
         freeRunningSample += samples;
         return;
     }
@@ -100,26 +107,32 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
 
     const auto durationSamples = juce::jmax<int64_t>(
         1, static_cast<int64_t>(duration * currentSampleRate));
-    const auto wrappedSample = ((timelineSample % durationSamples) + durationSamples) % durationSamples;
-    const float position = static_cast<float>(wrappedSample) / static_cast<float>(durationSamples);
-    displayPosition.store(position);
-
     const float amount = state.getRawParameterValue("amount")->load();
-    pitchSmoother.setTargetValue(curveValueAt(position, points) * amount);
-    const float cents = pitchSmoother.skip(samples);
-    stretcher.setTransposeSemitones(cents / 100.0f);
-
-    jassert(samples <= processed.getNumSamples());
     processed.clear(0, samples);
-    std::array<const float*, 2> inputPointers {};
-    std::array<float*, 2> outputPointers {};
-    for (int channel = 0; channel < channels; ++channel)
+    constexpr int controlBlockSize = 64;
+    for (int offset = 0; offset < samples; offset += controlBlockSize)
     {
-        inputPointers[static_cast<size_t>(channel)] = buffer.getReadPointer(channel);
-        outputPointers[static_cast<size_t>(channel)] = processed.getWritePointer(channel);
-    }
+        const int blockSamples = juce::jmin(controlBlockSize, samples - offset);
+        const auto blockTimeline = timelineSample + offset;
+        const auto wrappedSample =
+            ((blockTimeline % durationSamples) + durationSamples) % durationSamples;
+        const float position =
+            static_cast<float>(wrappedSample) / static_cast<float>(durationSamples);
+        displayPosition.store(position);
 
-    stretcher.process(inputPointers.data(), samples, outputPointers.data(), samples);
+        pitchSmoother.setTargetValue(curveValueAt(position, points) * amount);
+        stretcher.setTransposeSemitones(pitchSmoother.skip(blockSamples) / 100.0f);
+
+        std::array<const float*, 2> inputPointers {};
+        std::array<float*, 2> outputPointers {};
+        for (int channel = 0; channel < channels; ++channel)
+        {
+            inputPointers[static_cast<size_t>(channel)] = buffer.getReadPointer(channel, offset);
+            outputPointers[static_cast<size_t>(channel)] = processed.getWritePointer(channel, offset);
+        }
+        stretcher.process(inputPointers.data(), blockSamples,
+                          outputPointers.data(), blockSamples);
+    }
     for (int channel = 0; channel < channels; ++channel)
         buffer.copyFrom(channel, 0, processed, channel, 0, samples);
 
@@ -128,11 +141,37 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
 
 void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float durationSeconds)
 {
+    constexpr size_t maximumPoints = 4096;
+    points.erase(std::remove_if(points.begin(), points.end(), [] (const PitchPoint& point)
+    {
+        return ! std::isfinite(point.position) || ! std::isfinite(point.cents)
+            || ! std::isfinite(point.confidence);
+    }), points.end());
+
+    for (auto& point : points)
+    {
+        point.position = juce::jlimit(0.0f, 1.0f, point.position);
+        point.cents = juce::jlimit(-200.0f, 200.0f, point.cents);
+        point.confidence = juce::jlimit(0.0f, 1.0f, point.confidence);
+    }
+
     std::sort(points.begin(), points.end(),
               [] (const PitchPoint& a, const PitchPoint& b) { return a.position < b.position; });
+    if (points.size() > maximumPoints)
+    {
+        std::vector<PitchPoint> reduced;
+        reduced.reserve(maximumPoints);
+        for (size_t i = 0; i < maximumPoints; ++i)
+            reduced.push_back(points[i * (points.size() - 1) / (maximumPoints - 1)]);
+        points = std::move(reduced);
+    }
+
+    if (! std::isfinite(durationSeconds))
+        durationSeconds = 2.0f;
     auto updated = std::make_shared<const CurveData>(
-        CurveData { std::move(points), juce::jmax(0.1f, durationSeconds) });
+        CurveData { std::move(points), juce::jlimit(0.1f, 600.0f, durationSeconds) });
     std::atomic_store(&curveData, std::move(updated));
+    contourRevision.fetch_add(1);
 }
 
 std::vector<PitchPoint> ContourAudioProcessor::getContour() const
@@ -166,17 +205,28 @@ void ContourAudioProcessor::getStateInformation(juce::MemoryBlock& destination)
 
 void ContourAudioProcessor::setStateInformation(const void* data, int size)
 {
+    constexpr int maximumStateBytes = 2 * 1024 * 1024;
+    constexpr int maximumStatePoints = 4096;
+    if (data == nullptr || size <= 0 || size > maximumStateBytes)
+        return;
+
     if (const auto xml = getXmlFromBinary(data, size))
     {
         const auto root = juce::ValueTree::fromXml(*xml);
-        if (! root.isValid())
+        if (! root.isValid() || ! root.hasType("PARAMETERS"))
             return;
 
         if (const auto curve = root.getChildWithName("CONTOUR"); curve.isValid())
         {
             std::vector<PitchPoint> restored;
-            for (const auto& node : curve)
-                restored.push_back({ node["x"], node["cents"], node["confidence"] });
+            restored.reserve(static_cast<size_t>(
+                juce::jmin(curve.getNumChildren(), maximumStatePoints)));
+            for (int i = 0; i < curve.getNumChildren() && i < maximumStatePoints; ++i)
+            {
+                const auto node = curve.getChild(i);
+                if (node.hasType("POINT"))
+                    restored.push_back({ node["x"], node["cents"], node["confidence"] });
+            }
             setContour(std::move(restored), curve.getProperty("duration", 2.0f));
         }
 
