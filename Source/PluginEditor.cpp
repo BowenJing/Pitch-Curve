@@ -2,12 +2,12 @@
 
 namespace Palette
 {
-const auto background = juce::Colour::fromRGB(13, 15, 19);
-const auto panel = juce::Colour::fromRGB(23, 26, 32);
-const auto panelLight = juce::Colour::fromRGB(32, 36, 44);
-const auto text = juce::Colour::fromRGB(238, 240, 244);
-const auto muted = juce::Colour::fromRGB(139, 145, 158);
-const auto accent = juce::Colour::fromRGB(183, 255, 104);
+const auto background = juce::Colour::fromRGB(27, 32, 38);
+const auto panel = juce::Colour::fromRGB(37, 44, 52);
+const auto panelLight = juce::Colour::fromRGB(50, 59, 69);
+const auto text = juce::Colour::fromRGB(234, 238, 242);
+const auto muted = juce::Colour::fromRGB(161, 171, 182);
+const auto accent = juce::Colour::fromRGB(126, 211, 177);
 }
 
 ContourLookAndFeel::ContourLookAndFeel()
@@ -337,11 +337,8 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     setResizeLimits(720, 500, 1200, 850);
     setSize(900, 620);
 
-    title.setText("CONTOUR", juce::dontSendNotification);
+    title.setText("PITCHTRANSFORM", juce::dontSendNotification);
     title.setFont(juce::Font(juce::FontOptions(24.0f, juce::Font::bold)));
-    subtitle.setText("Pitch motion, transferred.", juce::dontSendNotification);
-    subtitle.setColour(juce::Label::textColourId, Palette::muted);
-    subtitle.setFont(juce::Font(juce::FontOptions(12.0f)));
     status.setText("Draw a curve, or learn one from audio", juce::dontSendNotification);
     status.setColour(juce::Label::textColourId, Palette::muted);
     status.setFont(juce::Font(juce::FontOptions(12.0f)));
@@ -413,7 +410,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     updateAmountText();
 
     for (auto* component : std::initializer_list<juce::Component*> {
-             &title, &subtitle, &status, &waveform, &fileName, &fileButton, &learnButton,
+             &title, &status, &waveform, &fileName, &fileButton, &learnButton,
              &clearButton, &secondsLabel, &framesLabel, &secondsEditor, &framesEditor,
              &amountEditor, &timeKnob, &amountLabel, &amount, &curveEditor })
         addAndMakeVisible(component);
@@ -439,8 +436,7 @@ void ContourAudioProcessorEditor::paint(juce::Graphics& g)
 void ContourAudioProcessorEditor::resized()
 {
     const int margin = 24;
-    title.setBounds(margin, 18, 180, 34);
-    subtitle.setBounds(margin, 49, 240, 24);
+    title.setBounds(margin, 27, 280, 34);
     status.setBounds(getWidth() - 330, 27, 306, 28);
 
     auto drop = juce::Rectangle<int>(margin, 102, getWidth() - margin * 2, 90);

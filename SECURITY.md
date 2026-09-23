@@ -2,7 +2,7 @@
 
 ## Runtime safety model
 
-Contour has no networking, telemetry, updater, shell execution, archive
+PitchTransform has no networking, telemetry, updater, shell execution, archive
 extraction, or credential access. `JUCE_USE_CURL=0` and `JUCE_WEB_BROWSER=0`
 remove JUCE's network and embedded-browser paths from the build. The plug-in
 only reads an audio file explicitly selected or dropped by the user and the
@@ -22,13 +22,13 @@ Defensive limits:
   commit hashes.
 
 Audio codecs still process untrusted local files. Only import audio from a
-trusted source, and keep Contour/JUCE updated.
+trusted source, and keep PitchTransform/JUCE updated.
 
 ## Dependency review
 
 - JUCE 8.0.10 is in its published security-support window through June 2029.
   The known JUCE archive-extraction CVEs affect versions before 6.1.5, and
-  Contour does not expose archive extraction.
+  PitchTransform does not expose archive extraction.
 - Signalsmith Stretch has no published CVE at the time of this review.
 
 ## Reporting

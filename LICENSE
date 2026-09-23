@@ -1,5 +1,5 @@
-Contour
-Copyright (C) 2026 Contour Audio contributors
+PitchTransform
+Copyright (C) 2026 Sound Tools contributors
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free
@@ -11,7 +11,7 @@ FOR A PARTICULAR PURPOSE. See <https://www.gnu.org/licenses/agpl-3.0.html>.
 
 This distribution uses JUCE under the AGPLv3 option. A commercial distributor
 may instead use JUCE under a valid commercial JUCE licence and may relicense
-Contour code for which it owns or has obtained the necessary rights.
+PitchTransform code for which it owns or has obtained the necessary rights.
 
 Signalsmith Stretch is distributed under the MIT License:
 

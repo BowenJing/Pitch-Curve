@@ -1,17 +1,17 @@
-# Contour 0.5.1 用户说明书
+# PitchTransform 0.6.0 用户说明书
 
-适用版本：Contour 0.5.1
+适用版本：PitchTransform 0.6.0
 文档语言：简体中文
 
 ## 1. 产品简介
 
-Contour 是一款用于提取和迁移细微音高变化的音频效果插件。它可以：
+PitchTransform 是一款用于提取和迁移细微音高变化的音频效果插件。它可以：
 
 1. 从一段参考音频中学习音高变化曲线。
 2. 将学习到的曲线施加到当前 DAW 轨道中的声音。
 3. 允许用户直接用鼠标绘制或修改音高变化曲线。
 
-Contour 提取的是相对于参考音频中位音高的变化量，而不是参考音频的绝对音高。因此，目标声音会保留自身音区，只继承参考音频中的颤音、滑音和其他细微音高运动。
+PitchTransform 提取的是相对于参考音频中位音高的变化量，而不是参考音频的绝对音高。因此，目标声音会保留自身音区，只继承参考音频中的颤音、滑音和其他细微音高运动。
 
 ## 2. 当前支持的平台和格式
 
@@ -41,31 +41,27 @@ Contour 提取的是相对于参考音频中位音高的变化量，而不是参
 安装或升级前，请关闭：
 
 - 所有 DAW。
-- Contour 独立运行程序。
+- PitchTransform 独立运行程序。
 - 插件扫描器。
-- 任何正在使用 Contour VST3 的音频程序。
+- 任何正在使用 PitchTransform VST3 的音频程序。
 
 Windows 在程序或 DAW 已加载插件时会锁定对应文件。如果没有关闭这些程序，安装器可能提示“无法打开要写入的文件”。
 
 ### 3.2 安装步骤
 
-1. 运行 `Contour-0.5.1-Windows-x64.exe`。
+1. 运行 `PitchTransform-0.6.0-Windows-x64.exe`。
 2. 根据 Windows 提示授予管理员权限。
 3. 完成安装。
 4. 重新打开 DAW，并执行一次插件重新扫描。
 
 默认安装位置：
 
-- VST3：`C:\Program Files\Common Files\VST3\Contour.vst3`
-- 独立程序：`C:\Program Files\Contour\Standalone\Contour.exe`
+- VST3：`C:\Program Files\Common Files\VST3\PitchTransform.vst3`
+- 独立程序：`C:\Program Files\Sound Tools\PitchTransform\Standalone\PitchTransform.exe`
 
 ### 3.3 Windows 安全提示
 
-当前开发安装包尚未使用 Authenticode 证书签名，因此 Windows SmartScreen 可能显示“未知发布者”提示。请只使用可信来源提供的安装包，并核对 SHA-256：
-
-```text
-293c0596e593c8f3efe5f4fcb8b696235e6010cce6352a0d70c0fa9fb7a8f579
-```
+当前开发安装包尚未使用 Authenticode 证书签名，因此 Windows SmartScreen 可能显示“未知发布者”提示。请只使用可信来源提供的安装包，并使用随安装包提供的 `.sha256` 文件核对 SHA-256。
 
 ## 4. 界面说明
 
@@ -129,7 +125,7 @@ Windows 在程序或 DAW 已加载插件时会锁定对应文件。如果没有�
 
 ### 5.1 从参考音频学习
 
-1. 在 DAW 中，将 Contour 插入需要处理的目标音频轨道。
+1. 在 DAW 中，将 PitchTransform 插入需要处理的目标音频轨道。
 2. 将一段参考音频拖入 Learn 区域，或点击 `DROP AUDIO OR BROWSE`。
 3. 确认文件名和波形显示正确。
 4. 点击 `LEARN CONTOUR`。
@@ -160,7 +156,7 @@ Windows 在程序或 DAW 已加载插件时会锁定对应文件。如果没有�
 
 ## 6. 音高学习原理
 
-Contour 使用面向单声部素材的音高检测：
+PitchTransform 使用面向单声部素材的音高检测：
 
 1. 将输入转换为单声道分析信号。
 2. 检测每个时间帧的基频和置信度。
@@ -189,7 +185,7 @@ Contour 使用面向单声部素材的音高检测：
 
 ### 8.1 延迟补偿
 
-Contour 使用高质量频谱移调算法，因此会产生固定处理延迟。插件会向 DAW 正确报告完整延迟。
+PitchTransform 使用高质量频谱移调算法，因此会产生固定处理延迟。插件会向 DAW 正确报告完整延迟。
 
 支持插件延迟补偿（PDC）的 DAW 会自动对齐轨道。即使没有曲线或 Amount 为 0%，插件也保持相同延迟，避免播放过程中切换曲线时改变 DAW 的补偿状态。
 
@@ -227,7 +223,7 @@ Contour 使用高质量频谱移调算法，因此会产生固定处理延迟。
 处理方法：
 
 1. 关闭 DAW。
-2. 关闭 Contour 独立程序。
+2. 关闭 PitchTransform 独立程序。
 3. 在任务管理器中关闭 DAW 的插件扫描器或后台进程。
 4. 重新运行安装器。
 5. 如果仍然失败，重启 Windows 后再安装。
@@ -235,7 +231,7 @@ Contour 使用高质量频谱移调算法，因此会产生固定处理延迟。
 ### DAW 找不到插件
 
 1. 确认 VST3 文件位于：
-   `C:\Program Files\Common Files\VST3\Contour.vst3`
+   `C:\Program Files\Common Files\VST3\PitchTransform.vst3`
 2. 在 DAW 中执行完整插件重扫。
 3. 确认 DAW 为 64 位并支持 VST3。
 4. 检查 DAW 的插件黑名单。
@@ -275,17 +271,17 @@ Contour 使用高质量频谱移调算法，因此会产生固定处理延迟。
 
 ## 11. 卸载
 
-1. 关闭 DAW 和 Contour。
+1. 关闭 DAW 和 PitchTransform。
 2. 打开 Windows“设置”。
 3. 进入“应用”或“已安装的应用”。
-4. 找到 `Contour 0.5.1`。
+4. 找到 `PitchTransform 0.6.0`。
 5. 点击“卸载”。
 
 卸载器会删除独立程序、VST3 和卸载注册信息。
 
 ## 12. 隐私与安全
 
-Contour：
+PitchTransform：
 
 - 不联网。
 - 不上传音频。
@@ -307,8 +303,10 @@ Contour：
 
 ## 14. 版本要点
 
-Contour 0.5.1 包含：
+PitchTransform 0.6.0 包含：
 
+- 插件及安装包更名为 PitchTransform，开发商更新为 Sound Tools。
+- 更舒适的深灰蓝与柔和薄荷绿配色。
 - 统一的时间与 Amount 旋钮、数值框、字体、间距和强调色。
 - 30 FPS 的秒数/帧数曲线时长控制。
 - 帧数超过 29 时自动进位。
@@ -326,5 +324,5 @@ Contour 0.5.1 包含：
 
 ---
 
-Contour Audio  
+Sound Tools
 项目许可及第三方许可信息见仓库中的 `LICENSE` 与 `COPYING`。

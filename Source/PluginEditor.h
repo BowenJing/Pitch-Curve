@@ -88,7 +88,6 @@ private:
     juce::TextButton learnButton { "LEARN CONTOUR" };
     juce::TextButton clearButton { "CLEAR CURVE" };
     juce::Label title;
-    juce::Label subtitle;
     juce::Label fileName;
     juce::Label status;
     juce::Label secondsLabel;
