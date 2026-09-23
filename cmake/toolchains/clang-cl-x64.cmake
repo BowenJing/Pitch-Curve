@@ -14,6 +14,23 @@ if(NOT EXISTS "${XWIN_ROOT}/crt/include/vector")
         "xwin --accept-license --arch x86_64 splat --output ${XWIN_ROOT}")
 endif()
 
+# lld-link runs on a case-sensitive filesystem, while MSVC library names are
+# case-insensitive on Windows. JUCE requests these canonical spellings.
+set(_sdk_um_lib "${XWIN_ROOT}/sdk/lib/um/x86_64")
+foreach(_library_pair IN ITEMS
+        "DbgHelp.Lib|DbgHelp.lib"
+        "dwrite.lib|Dwrite.lib"
+        "d2d1.lib|D2d1.lib"
+        "dcomp.lib|DComp.lib")
+    string(REPLACE "|" ";" _pair "${_library_pair}")
+    list(GET _pair 0 _source)
+    list(GET _pair 1 _destination)
+    if(NOT EXISTS "${_sdk_um_lib}/${_destination}")
+        file(CREATE_LINK "${_sdk_um_lib}/${_source}"
+            "${_sdk_um_lib}/${_destination}" SYMBOLIC COPY_ON_ERROR)
+    endif()
+endforeach()
+
 set(_llvm_bin "/usr/lib/llvm-20/bin")
 set(CMAKE_C_COMPILER "${_llvm_bin}/clang-cl")
 set(CMAKE_CXX_COMPILER "${_llvm_bin}/clang-cl")
