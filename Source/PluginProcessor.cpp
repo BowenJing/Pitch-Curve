@@ -28,7 +28,7 @@ void ContourAudioProcessor::prepareToPlay(double sampleRate, int maximumBlockSiz
     freeRunningSample = 0;
     stretcher.presetDefault(getTotalNumInputChannels(), sampleRate);
     stretcher.reset();
-    setLatencySamples(stretcher.outputLatency());
+    setLatencySamples(stretcher.inputLatency() + stretcher.outputLatency());
     bypassDelay.setMaximumDelayInSamples(juce::jmax(1, getLatencySamples() + 1));
     bypassDelay.prepare({ sampleRate, static_cast<juce::uint32>(maximumBlockSize),
                           static_cast<juce::uint32>(getTotalNumInputChannels()) });
@@ -108,7 +108,7 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
     for (int offset = 0; offset < samples; offset += controlBlockSize)
     {
         const int blockSamples = juce::jmin(controlBlockSize, samples - offset);
-        const auto blockTimeline = timelineSample + offset;
+        const auto blockTimeline = timelineSample + offset - stretcher.inputLatency();
         const auto wrappedSample =
             ((blockTimeline % durationSamples) + durationSamples) % durationSamples;
         const float position =
