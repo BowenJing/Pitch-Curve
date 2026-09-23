@@ -19,6 +19,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(JUCE)
 
 FetchContent_Declare(
+    signalsmith-linear
+    GIT_REPOSITORY https://github.com/Signalsmith-Audio/linear.git
+    GIT_TAG 280e84897520dfec6f039186aba70a5a8cbf2345
+    GIT_SHALLOW TRUE)
+
+FetchContent_Declare(
     signalsmith_stretch
     GIT_REPOSITORY https://git.signalsmith-audio.co.uk/Signalsmith-Audio/signalsmith-stretch.git
     GIT_TAG 90d6c686eb55b1512575d6d8b581b1959b1e91ac)
@@ -77,9 +83,6 @@ target_sources(Contour PRIVATE
     Source/PluginEditor.cpp
     Source/PluginEditor.h)
 
-target_include_directories(Contour PRIVATE
-    "${signalsmith_stretch_SOURCE_DIR}")
-
 target_compile_definitions(Contour PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
@@ -90,6 +93,7 @@ target_link_libraries(Contour PRIVATE
     juce::juce_audio_utils
     juce::juce_dsp
     juce::juce_gui_extra
+    signalsmith-stretch
     juce::juce_recommended_config_flags
     juce::juce_recommended_lto_flags
     juce::juce_recommended_warning_flags)

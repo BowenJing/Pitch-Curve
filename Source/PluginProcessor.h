@@ -2,7 +2,7 @@
 
 #include <JuceHeader.h>
 #include "PitchDetector.h"
-#include "signalsmith-stretch.h"
+#include <signalsmith-stretch/signalsmith-stretch.h>
 
 class ContourAudioProcessor final : public juce::AudioProcessor
 {
