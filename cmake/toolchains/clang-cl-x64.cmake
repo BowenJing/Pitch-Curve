@@ -14,7 +14,7 @@ if(NOT EXISTS "${XWIN_ROOT}/crt/include/vector")
         "xwin --accept-license --arch x86_64 splat --output ${XWIN_ROOT}")
 endif()
 
-set(_llvm_bin "/usr/lib/llvm-18/bin")
+set(_llvm_bin "/usr/lib/llvm-20/bin")
 set(CMAKE_C_COMPILER "${_llvm_bin}/clang-cl")
 set(CMAKE_CXX_COMPILER "${_llvm_bin}/clang-cl")
 set(CMAKE_LINKER "${_llvm_bin}/lld-link")
@@ -40,6 +40,10 @@ endforeach()
 
 set(CMAKE_C_FLAGS_INIT "${_include_flags}")
 set(CMAKE_CXX_FLAGS_INIT "${_include_flags} /EHsc")
+set(CMAKE_RC_FLAGS_INIT
+    "/I \"${XWIN_ROOT}/sdk/include/ucrt\" "
+    "/I \"${XWIN_ROOT}/sdk/include/shared\" "
+    "/I \"${XWIN_ROOT}/sdk/include/um\"")
 
 set(_library_flags
     "/libpath:\"${XWIN_ROOT}/crt/lib/x86_64\""
