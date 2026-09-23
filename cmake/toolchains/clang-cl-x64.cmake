@@ -26,6 +26,7 @@ set(CMAKE_CXX_COMPILER_TARGET x86_64-pc-windows-msvc)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set(_msvc_includes
+    "${_project_root}/cmake/windows-compat"
     "${XWIN_ROOT}/crt/include"
     "${XWIN_ROOT}/sdk/include/ucrt"
     "${XWIN_ROOT}/sdk/include/shared"
@@ -40,10 +41,10 @@ endforeach()
 
 set(CMAKE_C_FLAGS_INIT "${_include_flags}")
 set(CMAKE_CXX_FLAGS_INIT "${_include_flags} /EHsc")
-set(CMAKE_RC_FLAGS_INIT
-    "/I \"${XWIN_ROOT}/sdk/include/ucrt\" "
-    "/I \"${XWIN_ROOT}/sdk/include/shared\" "
-    "/I \"${XWIN_ROOT}/sdk/include/um\"")
+set(CMAKE_RC_STANDARD_INCLUDE_DIRECTORIES
+    "${XWIN_ROOT}/sdk/include/ucrt"
+    "${XWIN_ROOT}/sdk/include/shared"
+    "${XWIN_ROOT}/sdk/include/um")
 
 set(_library_flags
     "/libpath:\"${XWIN_ROOT}/crt/lib/x86_64\""
