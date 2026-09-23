@@ -3,6 +3,8 @@
 #include <JuceHeader.h>
 #include "PitchDetector.h"
 #include <signalsmith-stretch/signalsmith-stretch.h>
+#include <array>
+#include <mutex>
 
 class ContourAudioProcessor final : public juce::AudioProcessor
 {
@@ -41,23 +43,30 @@ public:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
 private:
+    static constexpr size_t maximumCurvePoints = 4096;
+
     struct CurveData
     {
-        std::vector<PitchPoint> points;
+        std::array<PitchPoint, maximumCurvePoints> points {};
+        size_t pointCount = 0;
         float durationSeconds = 2.0f;
     };
 
-    float curveValueAt(float position, const std::vector<PitchPoint>& points) const;
+    float curveValueAt(float position, const CurveData&) const;
 
     juce::AudioProcessorValueTreeState state;
     signalsmith::stretch::SignalsmithStretch<float> stretcher;
     juce::AudioBuffer<float> processed;
     juce::dsp::DelayLine<float> bypassDelay { 65536 };
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> pitchSmoother;
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> effectMix;
     double currentSampleRate = 44100.0;
     int64_t freeRunningSample = 0;
 
-    std::shared_ptr<const CurveData> curveData = std::make_shared<const CurveData>();
+    std::array<CurveData, 3> curveBuffers {};
+    std::atomic<int> publishedCurveIndex { 0 };
+    std::atomic<int> audioReadingCurveIndex { -1 };
+    mutable std::mutex curveWriterMutex;
     std::atomic<uint64_t> contourRevision { 0 };
     std::atomic<float> displayPosition { 0.0f };
 

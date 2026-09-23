@@ -178,14 +178,14 @@ void CurveEditor::drawAt(juce::Point<float> point)
         editablePoints[static_cast<size_t>(i)].cents =
             juce::jmap(weight, editablePoints[static_cast<size_t>(i)].cents, cents);
     }
-    processor.setContour(editablePoints, processor.getContourDuration());
-    repaint();
 }
 
 void CurveEditor::mouseDown(const juce::MouseEvent& event)
 {
     drawAt(event.position);
+    processor.setContour(editablePoints, processor.getContourDuration());
     previousDrawPosition = event.position;
+    repaint();
 }
 
 void CurveEditor::mouseDrag(const juce::MouseEvent& event)
@@ -193,7 +193,9 @@ void CurveEditor::mouseDrag(const juce::MouseEvent& event)
     if (! previousDrawPosition)
     {
         drawAt(event.position);
+        processor.setContour(editablePoints, processor.getContourDuration());
         previousDrawPosition = event.position;
+        repaint();
         return;
     }
 
@@ -201,7 +203,9 @@ void CurveEditor::mouseDrag(const juce::MouseEvent& event)
     const int steps = juce::jmax(1, juce::roundToInt(delta.getDistanceFromOrigin() / 3.0f));
     for (int step = 1; step <= steps; ++step)
         drawAt(*previousDrawPosition + delta * (static_cast<float>(step) / steps));
+    processor.setContour(editablePoints, processor.getContourDuration());
     previousDrawPosition = event.position;
+    repaint();
 }
 
 void CurveEditor::mouseUp(const juce::MouseEvent&)

@@ -34,10 +34,12 @@ void ContourAudioProcessor::prepareToPlay(double sampleRate, int maximumBlockSiz
                           static_cast<juce::uint32>(getTotalNumInputChannels()) });
     bypassDelay.reset();
     bypassDelay.setDelay(static_cast<float>(getLatencySamples()));
-    processed.setSize(getTotalNumOutputChannels(), juce::jmax(1, maximumBlockSize),
+    processed.setSize(getTotalNumOutputChannels(), juce::jmax(64, maximumBlockSize),
                       false, false, true);
     pitchSmoother.reset(sampleRate, 0.025);
     pitchSmoother.setCurrentAndTargetValue(0.0f);
+    effectMix.reset(sampleRate, 0.010);
+    effectMix.setCurrentAndTargetValue(0.0f);
 }
 
 void ContourAudioProcessor::releaseResources()
@@ -53,16 +55,18 @@ bool ContourAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) c
 }
 
 float ContourAudioProcessor::curveValueAt(float position,
-                                          const std::vector<PitchPoint>& points) const
+                                          const CurveData& curve) const
 {
-    if (points.empty())
+    if (curve.pointCount == 0)
         return 0.0f;
-    if (position <= points.front().position)
-        return points.front().cents;
-    if (position >= points.back().position)
-        return points.back().cents;
+    const auto begin = curve.points.begin();
+    const auto end = begin + static_cast<std::ptrdiff_t>(curve.pointCount);
+    if (position <= begin->position)
+        return begin->cents;
+    if (position >= (end - 1)->position)
+        return (end - 1)->cents;
 
-    const auto upper = std::lower_bound(points.begin(), points.end(), position,
+    const auto upper = std::lower_bound(begin, end, position,
         [] (const PitchPoint& point, float value) { return point.position < value; });
     const auto lower = upper - 1;
     const float span = upper->position - lower->position;
@@ -78,26 +82,19 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
     for (int channel = channels; channel < buffer.getNumChannels(); ++channel)
         buffer.clear(channel, 0, samples);
 
-    const auto currentCurve = std::atomic_load(&curveData);
-    const auto& points = currentCurve->points;
-    const float duration = currentCurve->durationSeconds;
-
-    const bool canProcessContour = ! points.empty() && duration > 0.0f
-                                && samples <= processed.getNumSamples();
-    for (int sample = 0; sample < samples; ++sample)
-        for (int channel = 0; channel < channels; ++channel)
-        {
-            bypassDelay.pushSample(channel, buffer.getSample(channel, sample));
-            const float delayed = bypassDelay.popSample(channel);
-            if (! canProcessContour)
-                buffer.setSample(channel, sample, delayed);
-        }
-
-    if (! canProcessContour)
+    int curveIndex = 0;
+    do
     {
-        freeRunningSample += samples;
-        return;
+        curveIndex = publishedCurveIndex.load(std::memory_order_acquire);
+        audioReadingCurveIndex.store(curveIndex, std::memory_order_release);
     }
+    while (curveIndex != publishedCurveIndex.load(std::memory_order_acquire));
+    const auto& curve = curveBuffers[static_cast<size_t>(curveIndex)];
+    const float duration = curve.durationSeconds;
+    const float amount = state.getRawParameterValue("amount")->load();
+    const bool contourEnabled = curve.pointCount > 0 && duration > 0.0f
+                             && std::abs(amount) > 1.0e-6f;
+    effectMix.setTargetValue(contourEnabled ? 1.0f : 0.0f);
 
     int64_t timelineSample = freeRunningSample;
     if (auto* hostPlayHead = getPlayHead())
@@ -107,8 +104,6 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
 
     const auto durationSamples = juce::jmax<int64_t>(
         1, static_cast<int64_t>(duration * currentSampleRate));
-    const float amount = state.getRawParameterValue("amount")->load();
-    processed.clear(0, samples);
     constexpr int controlBlockSize = 64;
     for (int offset = 0; offset < samples; offset += controlBlockSize)
     {
@@ -120,7 +115,7 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
             static_cast<float>(wrappedSample) / static_cast<float>(durationSamples);
         displayPosition.store(position);
 
-        pitchSmoother.setTargetValue(curveValueAt(position, points) * amount);
+        pitchSmoother.setTargetValue(contourEnabled ? curveValueAt(position, curve) * amount : 0.0f);
         stretcher.setTransposeSemitones(pitchSmoother.skip(blockSamples) / 100.0f);
 
         std::array<const float*, 2> inputPointers {};
@@ -128,20 +123,31 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
         for (int channel = 0; channel < channels; ++channel)
         {
             inputPointers[static_cast<size_t>(channel)] = buffer.getReadPointer(channel, offset);
-            outputPointers[static_cast<size_t>(channel)] = processed.getWritePointer(channel, offset);
+            outputPointers[static_cast<size_t>(channel)] = processed.getWritePointer(channel);
         }
         stretcher.process(inputPointers.data(), blockSamples,
                           outputPointers.data(), blockSamples);
-    }
-    for (int channel = 0; channel < channels; ++channel)
-        buffer.copyFrom(channel, 0, processed, channel, 0, samples);
 
+        for (int sample = 0; sample < blockSamples; ++sample)
+        {
+            const float mix = effectMix.getNextValue();
+            for (int channel = 0; channel < channels; ++channel)
+            {
+                const float input = buffer.getSample(channel, offset + sample);
+                bypassDelay.pushSample(channel, input);
+                const float bypass = bypassDelay.popSample(channel);
+                const float wet = processed.getSample(channel, sample);
+                buffer.setSample(channel, offset + sample,
+                                 bypass + mix * (wet - bypass));
+            }
+        }
+    }
+    audioReadingCurveIndex.store(-1, std::memory_order_release);
     freeRunningSample += samples;
 }
 
 void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float durationSeconds)
 {
-    constexpr size_t maximumPoints = 4096;
     points.erase(std::remove_if(points.begin(), points.end(), [] (const PitchPoint& point)
     {
         return ! std::isfinite(point.position) || ! std::isfinite(point.cents)
@@ -157,31 +163,47 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
 
     std::sort(points.begin(), points.end(),
               [] (const PitchPoint& a, const PitchPoint& b) { return a.position < b.position; });
-    if (points.size() > maximumPoints)
+    if (points.size() > maximumCurvePoints)
     {
         std::vector<PitchPoint> reduced;
-        reduced.reserve(maximumPoints);
-        for (size_t i = 0; i < maximumPoints; ++i)
-            reduced.push_back(points[i * (points.size() - 1) / (maximumPoints - 1)]);
+        reduced.reserve(maximumCurvePoints);
+        for (size_t i = 0; i < maximumCurvePoints; ++i)
+            reduced.push_back(points[i * (points.size() - 1) / (maximumCurvePoints - 1)]);
         points = std::move(reduced);
     }
 
     if (! std::isfinite(durationSeconds))
         durationSeconds = 2.0f;
-    auto updated = std::make_shared<const CurveData>(
-        CurveData { std::move(points), juce::jlimit(0.1f, 600.0f, durationSeconds) });
-    std::atomic_store(&curveData, std::move(updated));
+
+    std::lock_guard<std::mutex> lock(curveWriterMutex);
+    const int published = publishedCurveIndex.load(std::memory_order_acquire);
+    const int reading = audioReadingCurveIndex.load(std::memory_order_acquire);
+    int target = 0;
+    while (target == published || target == reading)
+        ++target;
+
+    auto& updated = curveBuffers[static_cast<size_t>(target)];
+    updated.pointCount = points.size();
+    std::copy(points.begin(), points.end(), updated.points.begin());
+    updated.durationSeconds = juce::jlimit(0.1f, 600.0f, durationSeconds);
+    publishedCurveIndex.store(target, std::memory_order_release);
     contourRevision.fetch_add(1);
 }
 
 std::vector<PitchPoint> ContourAudioProcessor::getContour() const
 {
-    return std::atomic_load(&curveData)->points;
+    std::lock_guard<std::mutex> lock(curveWriterMutex);
+    const auto& curve = curveBuffers[static_cast<size_t>(
+        publishedCurveIndex.load(std::memory_order_acquire))];
+    return { curve.points.begin(),
+             curve.points.begin() + static_cast<std::ptrdiff_t>(curve.pointCount) };
 }
 
 float ContourAudioProcessor::getContourDuration() const
 {
-    return std::atomic_load(&curveData)->durationSeconds;
+    std::lock_guard<std::mutex> lock(curveWriterMutex);
+    return curveBuffers[static_cast<size_t>(
+        publishedCurveIndex.load(std::memory_order_acquire))].durationSeconds;
 }
 
 void ContourAudioProcessor::getStateInformation(juce::MemoryBlock& destination)
