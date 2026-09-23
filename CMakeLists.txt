@@ -38,24 +38,32 @@ endif()
 if(APPLE)
     install(DIRECTORY
         "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Contour.vst3"
-        DESTINATION "Library/Audio/Plug-Ins/VST3")
+        DESTINATION "Library/Audio/Plug-Ins/VST3" COMPONENT ContourRuntime)
     install(DIRECTORY
         "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/AU/Contour.component"
-        DESTINATION "Library/Audio/Plug-Ins/Components")
+        DESTINATION "Library/Audio/Plug-Ins/Components" COMPONENT ContourRuntime)
     install(DIRECTORY
         "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/Standalone/Contour.app"
-        DESTINATION "Applications")
+        DESTINATION "Applications" COMPONENT ContourRuntime)
 elseif(WIN32)
     install(DIRECTORY
         "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Contour.vst3"
-        DESTINATION "VST3")
-    install(TARGETS Contour_Standalone RUNTIME DESTINATION "Standalone")
+        DESTINATION "VST3" COMPONENT ContourRuntime)
+    install(TARGETS Contour_Standalone RUNTIME DESTINATION "Standalone"
+        COMPONENT ContourRuntime)
 else()
     install(DIRECTORY
         "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Contour.vst3"
-        DESTINATION "lib/vst3")
+        DESTINATION "lib/vst3" COMPONENT ContourRuntime)
     install(PROGRAMS "$<TARGET_FILE:Contour_Standalone>"
-        DESTINATION "bin" RENAME "contour")
+        DESTINATION "bin" RENAME "contour" COMPONENT ContourRuntime)
+endif()
+
+if(UNIX AND NOT APPLE)
+    target_compile_options(Contour PRIVATE -fstack-protector-strong)
+    target_compile_definitions(Contour PRIVATE _FORTIFY_SOURCE=3)
+    target_link_options(Contour_VST3 PRIVATE -Wl,-z,relro,-z,now)
+    target_link_options(Contour_Standalone PRIVATE -Wl,-z,relro,-z,now)
 endif()
 
 juce_add_plugin(Contour
@@ -131,6 +139,7 @@ set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_CHECKSUM "SHA256")
 set(CPACK_STRIP_FILES TRUE)
+set(CPACK_COMPONENTS_ALL ContourRuntime)
 
 if(APPLE)
     set(CPACK_GENERATOR "productbuild")
