@@ -1,9 +1,12 @@
 /build/
+/build-windows/
 /_CPack_Packages/
 /Contour-*.deb
 /Contour-*.deb.sha256
 /Contour-*.tar.gz
 /Contour-*.tar.gz.sha256
+/Contour-*-Windows-*.exe
+/Contour-*-Windows-*.exe.sha256
 /.cache/
 *.jucer
 .DS_Store

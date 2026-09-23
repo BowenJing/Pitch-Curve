@@ -44,6 +44,17 @@ required. The installer copies `Contour.vst3` into the system Common Files VST3
 directory. Sign binaries and the final installer with Authenticode before
 public release.
 
+For an unsigned x64 development build from Debian/Ubuntu, install MinGW-w64 and
+NSIS, then use the included toolchain:
+
+```bash
+cmake -S . -B build-windows \
+  -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/mingw-x64.cmake \
+  -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+cmake --build build-windows --parallel
+cpack --config build-windows/CPackConfig.cmake -G NSIS
+```
+
 ## Verification
 
 Each CPack run emits a SHA-256 sidecar where supported. Release automation
