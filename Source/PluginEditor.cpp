@@ -367,13 +367,13 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
         editor->onFocusLost = [this] { applyDurationTimecode(); };
     }
 
-    duration.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-    duration.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    duration.setRange(1.0, 600.0 * 30.0, 1.0);
-    duration.setSkewFactorFromMidPoint(300.0);
-    duration.onValueChange = [this]
+    timeKnob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    timeKnob.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    timeKnob.setRange(1.0, 600.0 * 30.0, 1.0);
+    timeKnob.setSkewFactorFromMidPoint(300.0);
+    timeKnob.onValueChange = [this]
     {
-        const int totalFrames = juce::roundToInt(duration.getValue());
+        const int totalFrames = juce::roundToInt(timeKnob.getValue());
         processor.setContour(processor.getContour(),
                              static_cast<float>(totalFrames) / 30.0f);
         updateDurationTimecode();
@@ -400,7 +400,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     for (auto* component : std::initializer_list<juce::Component*> {
              &title, &subtitle, &status, &waveform, &fileName, &fileButton, &learnButton,
              &clearButton, &secondsLabel, &framesLabel, &secondsEditor, &framesEditor,
-             &duration, &amountLabel, &amount, &curveEditor })
+             &timeKnob, &amountLabel, &amount, &curveEditor })
         addAndMakeVisible(component);
 }
 
@@ -466,7 +466,7 @@ void ContourAudioProcessorEditor::resized()
                    juce::jmin(timeSection.getHeight() - timeFieldsHeight,
                               amountSection.getHeight() - amountTextAndLabelHeight)));
 
-    duration.setBounds(juce::Rectangle<int>(ringSize, ringSize)
+    timeKnob.setBounds(juce::Rectangle<int>(ringSize, ringSize)
                            .withCentre({ timeSection.getCentreX(),
                                          timeSection.getY() + ringSize / 2 }));
     const int fieldsY = timeSection.getBottom() - timeFieldsHeight;
@@ -513,7 +513,7 @@ void ContourAudioProcessorEditor::applyDurationTimecode()
     const float duration = static_cast<float>(totalFrames)
                          / static_cast<float>(framesPerSecond);
     processor.setContour(processor.getContour(), duration);
-    this->duration.setValue(totalFrames, juce::dontSendNotification);
+    timeKnob.setValue(totalFrames, juce::dontSendNotification);
     updateDurationTimecode();
     status.setText("Curve duration: " + juce::String(totalFrames / framesPerSecond)
                        + " second " + juce::String(totalFrames % framesPerSecond)
@@ -534,7 +534,7 @@ void ContourAudioProcessorEditor::updateDurationTimecode()
         secondsEditor.setText(secondsText, false);
     if (framesEditor.getText() != framesText)
         framesEditor.setText(framesText, false);
-    duration.setValue(totalFrames, juce::dontSendNotification);
+    timeKnob.setValue(totalFrames, juce::dontSendNotification);
 }
 
 void ContourAudioProcessorEditor::chooseFile()

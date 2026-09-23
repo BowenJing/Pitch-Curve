@@ -93,7 +93,7 @@ private:
     juce::Label amountLabel;
     juce::TextEditor secondsEditor;
     juce::TextEditor framesEditor;
-    juce::Slider duration;
+    juce::Slider timeKnob;
     juce::Slider amount;
     juce::File selectedFile;
     juce::File analysisFile;
