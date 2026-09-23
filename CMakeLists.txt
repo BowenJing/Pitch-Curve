@@ -174,7 +174,15 @@ elseif(WIN32)
     set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
     set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [=[
-nsExec::ExecToLog 'xcopy /E /I /Y \"$INSTDIR\\VST3\\Contour.vst3\" \"$COMMONFILES64\\VST3\\Contour.vst3\"'
+SetOutPath \"$COMMONFILES64\\VST3\\Contour.vst3\"
+ClearErrors
+File /r \"${INST_DIR}\\VST3\\Contour.vst3\\*.*\"
+IfErrors vst3InstallFailed vst3InstallDone
+vst3InstallFailed:
+  MessageBox MB_ICONSTOP \"Contour VST3 could not be installed.\"
+  Abort
+vst3InstallDone:
+SetOutPath \"$INSTDIR\"
 ]=])
     set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS [=[
 RMDir /r \"$COMMONFILES64\\VST3\\Contour.vst3\"
