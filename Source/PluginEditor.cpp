@@ -67,6 +67,7 @@ CurveEditor::CurveEditor(ContourAudioProcessor& owner) : processor(owner)
 {
     editablePoints = processor.getContour();
     observedRevision = processor.getContourRevision();
+    setWantsKeyboardFocus(true);
     setMouseCursor(juce::MouseCursor::CrosshairCursor);
     startTimerHz(30);
 }
@@ -227,6 +228,7 @@ void CurveEditor::drawAt(juce::Point<float> point)
 
 void CurveEditor::mouseDown(const juce::MouseEvent& event)
 {
+    grabKeyboardFocus();
     drawAt(event.position);
     processor.setContour(editablePoints, processor.getContourDuration());
     previousDrawPosition = event.position;
@@ -339,17 +341,13 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     fileName.setColour(juce::Label::textColourId, Palette::muted);
     fileName.setJustificationType(juce::Justification::centred);
     fileName.setFont(juce::Font(juce::FontOptions(12.0f)));
-    durationLabel.setText("DURATION - 30 FPS", juce::dontSendNotification);
-    durationLabel.setColour(juce::Label::textColourId, Palette::muted);
-    durationLabel.setJustificationType(juce::Justification::centred);
-    durationLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
     secondsLabel.setText("SECOND", juce::dontSendNotification);
     framesLabel.setText("FRAME", juce::dontSendNotification);
     for (auto* label : { &secondsLabel, &framesLabel })
     {
         label->setColour(juce::Label::textColourId, Palette::muted);
         label->setJustificationType(juce::Justification::centred);
-        label->setFont(juce::Font(juce::FontOptions(9.0f)));
+        label->setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::bold)));
     }
     amountLabel.setText("AMOUNT", juce::dontSendNotification);
     amountLabel.setColour(juce::Label::textColourId, Palette::muted);
@@ -359,8 +357,8 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     {
         editor->setInputRestrictions(4, "0123456789");
         editor->setJustification(juce::Justification::centred);
-        editor->setSelectAllWhenFocused(true);
-        editor->setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
+        editor->setSelectAllWhenFocused(false);
+        editor->setFont(juce::Font(juce::FontOptions(16.0f, juce::Font::bold)));
         editor->setColour(juce::TextEditor::backgroundColourId, Palette::panelLight);
         editor->setColour(juce::TextEditor::textColourId, Palette::text);
         editor->setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
@@ -368,6 +366,18 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
         editor->onReturnKey = [this] { applyDurationTimecode(); };
         editor->onFocusLost = [this] { applyDurationTimecode(); };
     }
+
+    duration.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    duration.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    duration.setRange(1.0, 600.0 * 30.0, 1.0);
+    duration.setSkewFactorFromMidPoint(300.0);
+    duration.onValueChange = [this]
+    {
+        const int totalFrames = juce::roundToInt(duration.getValue());
+        processor.setContour(processor.getContour(),
+                             static_cast<float>(totalFrames) / 30.0f);
+        updateDurationTimecode();
+    };
     updateDurationTimecode();
 
     fileButton.onClick = [this] { chooseFile(); };
@@ -389,8 +399,8 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
 
     for (auto* component : std::initializer_list<juce::Component*> {
              &title, &subtitle, &status, &waveform, &fileName, &fileButton, &learnButton,
-             &clearButton, &durationLabel, &secondsLabel, &framesLabel, &secondsEditor,
-             &framesEditor, &amountLabel, &amount, &curveEditor })
+             &clearButton, &secondsLabel, &framesLabel, &secondsEditor, &framesEditor,
+             &duration, &amountLabel, &amount, &curveEditor })
         addAndMakeVisible(component);
 }
 
@@ -440,17 +450,19 @@ void ContourAudioProcessorEditor::resized()
                                         getHeight() - 246);
     auto control = content.removeFromRight(controlWidth);
     curveEditor.setBounds(content.reduced(0, 0).withTrimmedRight(16));
-    durationLabel.setBounds(control.getX(), control.getY() + 2, controlWidth, 18);
     const int fieldWidth = 55;
-    secondsEditor.setBounds(control.getX(), control.getY() + 23, fieldWidth, 27);
-    framesEditor.setBounds(control.getRight() - fieldWidth, control.getY() + 23,
-                           fieldWidth, 27);
-    secondsLabel.setBounds(secondsEditor.getX(), control.getY() + 51, fieldWidth, 16);
-    framesLabel.setBounds(framesEditor.getX(), control.getY() + 51, fieldWidth, 16);
+    const int availableHeight = control.getHeight() - 46;
+    const int knobHeight = juce::jlimit(68, 105, (availableHeight - 55) / 2);
+    duration.setBounds(control.getX(), control.getY(), controlWidth, knobHeight);
+    const int fieldsY = duration.getBottom();
+    secondsEditor.setBounds(control.getX(), fieldsY, fieldWidth, 30);
+    framesEditor.setBounds(control.getRight() - fieldWidth, fieldsY, fieldWidth, 30);
+    secondsLabel.setBounds(secondsEditor.getX(), fieldsY + 30, fieldWidth, 20);
+    framesLabel.setBounds(framesEditor.getX(), fieldsY + 30, fieldWidth, 20);
 
-    const auto amountArea = control.withTrimmedTop(72).withTrimmedBottom(48);
-    amount.setBounds(control.getX(), amountArea.getCentreY() - 55, controlWidth, 105);
-    amountLabel.setBounds(control.getX(), amountArea.getCentreY() + 50, controlWidth, 20);
+    const int amountY = fieldsY + 51;
+    amount.setBounds(control.getX(), amountY, controlWidth, knobHeight);
+    amountLabel.setBounds(control.getX(), amount.getBottom() - 4, controlWidth, 20);
     clearButton.setBounds(control.getX(), control.getBottom() - 38, controlWidth, 38);
 }
 
@@ -483,6 +495,7 @@ void ContourAudioProcessorEditor::applyDurationTimecode()
     const float duration = static_cast<float>(totalFrames)
                          / static_cast<float>(framesPerSecond);
     processor.setContour(processor.getContour(), duration);
+    this->duration.setValue(totalFrames, juce::dontSendNotification);
     updateDurationTimecode();
     status.setText("Curve duration: " + juce::String(totalFrames / framesPerSecond)
                        + " second " + juce::String(totalFrames % framesPerSecond)
@@ -497,8 +510,13 @@ void ContourAudioProcessorEditor::updateDurationTimecode()
     const int totalFrames = juce::jlimit(
         1, maximumTotalFrames,
         juce::roundToInt(processor.getContourDuration() * framesPerSecond));
-    secondsEditor.setText(juce::String(totalFrames / framesPerSecond), false);
-    framesEditor.setText(juce::String(totalFrames % framesPerSecond), false);
+    const auto secondsText = juce::String(totalFrames / framesPerSecond);
+    const auto framesText = juce::String(totalFrames % framesPerSecond);
+    if (secondsEditor.getText() != secondsText)
+        secondsEditor.setText(secondsText, false);
+    if (framesEditor.getText() != framesText)
+        framesEditor.setText(framesText, false);
+    duration.setValue(totalFrames, juce::dontSendNotification);
 }
 
 void ContourAudioProcessorEditor::chooseFile()

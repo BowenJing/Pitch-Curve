@@ -26,6 +26,8 @@ void ContourAudioProcessor::prepareToPlay(double sampleRate, int maximumBlockSiz
 {
     currentSampleRate = sampleRate;
     freeRunningSample = 0;
+    hostPlaybackSample = 0;
+    hostWasPlaying = false;
     stretcher.presetDefault(getTotalNumInputChannels(), sampleRate);
     stretcher.reset();
     setLatencySamples(stretcher.inputLatency() + stretcher.outputLatency());
@@ -108,16 +110,27 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
                              && std::abs(amount) > 1.0e-6f;
     effectMix.setTargetValue(contourEnabled ? 1.0f : 0.0f);
 
+    bool hasHostTransport = false;
     bool transportStopped = false;
-    int64_t timelineSample = freeRunningSample;
+    int64_t timelineSample = freeRunningSample + stretcher.inputLatency();
     if (auto* hostPlayHead = getPlayHead())
         if (const auto position = hostPlayHead->getPosition())
         {
+            hasHostTransport = true;
             transportStopped = ! position->getIsPlaying();
             if (transportStopped)
+            {
+                hostPlaybackSample = 0;
+                hostWasPlaying = false;
                 timelineSample = stretcher.inputLatency();
-            else if (const auto hostSample = position->getTimeInSamples())
-                timelineSample = *hostSample;
+            }
+            else
+            {
+                if (! hostWasPlaying)
+                    hostPlaybackSample = 0;
+                hostWasPlaying = true;
+                timelineSample = hostPlaybackSample + stretcher.inputLatency();
+            }
         }
 
     const auto durationSamples = juce::jmax<int64_t>(
@@ -161,7 +174,17 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
         }
     }
     audioReadingCurveIndex.store(-1, std::memory_order_release);
-    freeRunningSample = transportStopped ? 0 : freeRunningSample + samples;
+    if (hasHostTransport)
+    {
+        if (! transportStopped)
+            hostPlaybackSample += samples;
+    }
+    else
+    {
+        hostWasPlaying = false;
+        hostPlaybackSample = 0;
+        freeRunningSample += samples;
+    }
 }
 
 void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float durationSeconds)

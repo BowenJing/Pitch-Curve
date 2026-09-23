@@ -65,6 +65,8 @@ private:
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> effectMix;
     double currentSampleRate = 44100.0;
     int64_t freeRunningSample = 0;
+    int64_t hostPlaybackSample = 0;
+    bool hostWasPlaying = false;
 
     std::array<CurveData, 3> curveBuffers {};
     std::atomic<int> publishedCurveIndex { 0 };

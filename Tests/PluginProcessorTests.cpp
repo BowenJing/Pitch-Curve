@@ -179,9 +179,17 @@ bool testStoppedTransportResetsDisplay()
     block.clear();
     juce::MidiBuffer midi;
     processor.processBlock(block, midi);
+    if (processor.getPlayheadPosition() > 0.01f)
+    {
+        std::cerr << "New playback must begin at the start of the curve\n";
+        return false;
+    }
+
+    for (int i = 0; i < 100; ++i)
+        processor.processBlock(block, midi);
     if (processor.getPlayheadPosition() < 0.1f)
     {
-        std::cerr << "Playing transport must advance the curve display\n";
+        std::cerr << "Continuous playback must advance the curve display\n";
         return false;
     }
 
@@ -190,6 +198,15 @@ bool testStoppedTransportResetsDisplay()
     if (std::abs(processor.getPlayheadPosition()) > 1.0e-6f)
     {
         std::cerr << "Stopped transport must reset the curve display\n";
+        return false;
+    }
+
+    playHead.position.setIsPlaying(true);
+    playHead.position.setTimeInSamples(960000);
+    processor.processBlock(block, midi);
+    if (processor.getPlayheadPosition() > 0.01f)
+    {
+        std::cerr << "Restarted transport must restart the curve from its beginning\n";
         return false;
     }
     return true;

@@ -88,12 +88,12 @@ private:
     juce::Label subtitle;
     juce::Label fileName;
     juce::Label status;
-    juce::Label durationLabel;
     juce::Label secondsLabel;
     juce::Label framesLabel;
     juce::Label amountLabel;
     juce::TextEditor secondsEditor;
     juce::TextEditor framesEditor;
+    juce::Slider duration;
     juce::Slider amount;
     juce::File selectedFile;
     juce::File analysisFile;
