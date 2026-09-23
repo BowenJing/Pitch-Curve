@@ -4,14 +4,15 @@ PitchTransform is a cross-platform audio plug-in that captures the small pitch m
 of one performance and applies them to another. A contour can also be drawn
 directly in the editor.
 
-## Version 0.6.0
+## Version 0.6.1
 
 - Drag or browse for WAV, AIFF, FLAC, MP3, or OGG audio.
 - YIN-based monophonic pitch tracking with confidence gating and median
   de-spiking.
 - Learned movement is stored as cents relative to the source's median pitch, so
   the destination keeps its own musical register.
-- Editable ±200 cent curve with a host-synchronised playhead.
+- Editable ±12-semitone base curve, reaching ±24 semitones at 200% Amount.
+- Amount-aware semitone axis (±2 at 0%, ±12 at 100%, ±24 at 200%).
 - 30 FPS second/frame duration controls, with automatic frame carry.
 - Unified time/amount controls, typography, spacing, and a comfortable slate/mint palette.
 - The curve playhead returns to the start whenever host playback stops.

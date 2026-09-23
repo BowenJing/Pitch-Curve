@@ -10,8 +10,12 @@ namespace
 class TestPlayHead final : public juce::AudioPlayHead
 {
 public:
-    juce::Optional<PositionInfo> getPosition() const override { return position; }
+    juce::Optional<PositionInfo> getPosition() const override
+    {
+        return positionAvailable ? juce::Optional<PositionInfo> { position } : std::nullopt;
+    }
     PositionInfo position;
+    bool positionAvailable = true;
 };
 
 bool testLatencyMatchedBypass()
@@ -160,6 +164,18 @@ bool testStateRoundTripAndBounds()
         std::cerr << "Oversized state must be rejected without changing the contour\n";
         return false;
     }
+
+    ContourAudioProcessor bounded;
+    bounded.setContour({ { 0.25f, -5000.0f, 1.0f },
+                         { 0.75f, 5000.0f, 1.0f } }, 1.0f);
+    const auto boundedCurve = bounded.getContour();
+    if (boundedCurve.size() != 4
+        || std::abs(boundedCurve[1].cents + 1200.0f) > 1.0e-6f
+        || std::abs(boundedCurve[2].cents - 1200.0f) > 1.0e-6f)
+    {
+        std::cerr << "Editable pitch range must be clamped to +/-12 semitones\n";
+        return false;
+    }
     return true;
 }
 
@@ -171,13 +187,23 @@ bool testStoppedTransportResetsDisplay()
     processor.setContour({ { 0.0f, -20.0f, 1.0f }, { 1.0f, -20.0f, 1.0f } }, 1.0f);
 
     TestPlayHead playHead;
-    playHead.position.setIsPlaying(true);
-    playHead.position.setTimeInSamples(24000);
+    playHead.positionAvailable = false;
     processor.setPlayHead(&playHead);
 
     juce::AudioBuffer<float> block(2, 128);
     block.clear();
     juce::MidiBuffer midi;
+    for (int i = 0; i < 100; ++i)
+        processor.processBlock(block, midi);
+    if (std::abs(processor.getPlayheadPosition()) > 1.0e-6f)
+    {
+        std::cerr << "Unavailable initial host position must hold the curve at its start\n";
+        return false;
+    }
+
+    playHead.positionAvailable = true;
+    playHead.position.setIsPlaying(true);
+    playHead.position.setTimeInSamples(24000);
     processor.processBlock(block, midi);
     if (processor.getPlayheadPosition() > 0.01f)
     {

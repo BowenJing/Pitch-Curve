@@ -32,6 +32,7 @@ private:
     juce::Rectangle<float> graphBounds() const;
     float centsFromY(float) const;
     float yFromCents(float) const;
+    float displayRangeSemitones() const;
 
     ContourAudioProcessor& processor;
     std::vector<PitchPoint> editablePoints;

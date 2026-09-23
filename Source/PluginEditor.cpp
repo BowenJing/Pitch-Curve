@@ -85,14 +85,21 @@ float CurveEditor::centsFromY(float y) const
 {
     const auto bounds = graphBounds();
     return juce::jmap(juce::jlimit(bounds.getY(), bounds.getBottom(), y),
-                      bounds.getBottom(), bounds.getY(), -200.0f, 200.0f);
+                      bounds.getBottom(), bounds.getY(), -1200.0f, 1200.0f);
 }
 
 float CurveEditor::yFromCents(float cents) const
 {
     const auto bounds = graphBounds();
-    return juce::jmap(juce::jlimit(-200.0f, 200.0f, cents),
-                      -200.0f, 200.0f, bounds.getBottom(), bounds.getY());
+    return juce::jmap(juce::jlimit(-1200.0f, 1200.0f, cents),
+                      -1200.0f, 1200.0f, bounds.getBottom(), bounds.getY());
+}
+
+float CurveEditor::displayRangeSemitones() const
+{
+    constexpr float minimumVisualAmount = 1.0f / 6.0f;
+    const float amount = processor.parameters().getRawParameterValue("amount")->load();
+    return 12.0f * juce::jmax(minimumVisualAmount, amount);
 }
 
 void CurveEditor::paint(juce::Graphics& g)
@@ -108,17 +115,26 @@ void CurveEditor::paint(juce::Graphics& g)
         const float x = bounds.getX() + bounds.getWidth() * i / 8.0f;
         g.drawVerticalLine(juce::roundToInt(x), bounds.getY(), bounds.getBottom());
     }
-    for (int cents : { -200, -100, 0, 100, 200 })
+    const float semitoneRange = displayRangeSemitones();
+    for (int tick = -2; tick <= 2; ++tick)
     {
-        const float y = yFromCents(static_cast<float>(cents));
-        g.setColour(cents == 0 ? Palette::muted.withAlpha(0.45f) : Palette::muted.withAlpha(0.16f));
+        const float baseCents = static_cast<float>(tick) * 600.0f;
+        const float semitones = semitoneRange * static_cast<float>(tick) / 2.0f;
+        const float y = yFromCents(baseCents);
+        g.setColour(tick == 0 ? Palette::muted.withAlpha(0.45f)
+                              : Palette::muted.withAlpha(0.16f));
         g.drawHorizontalLine(juce::roundToInt(y), bounds.getX(), bounds.getRight());
-        if (cents != 0)
+        if (tick != 0)
         {
+            const float rounded = std::round(semitones);
+            const auto value = std::abs(semitones - rounded) < 0.01f
+                ? juce::String(static_cast<int>(rounded))
+                : juce::String(semitones, 1);
             g.setColour(Palette::muted.withAlpha(0.7f));
             g.setFont(10.0f);
-            g.drawText((cents > 0 ? "+" : "") + juce::String(cents) + "c",
-                       juce::Rectangle<float>(bounds.getX() + 5.0f, y - 13.0f, 40.0f, 12.0f),
+            g.drawText((semitones > 0.0f ? "+" : "") + value + " st",
+                       juce::Rectangle<float>(bounds.getX() + 5.0f, y - 13.0f,
+                                              52.0f, 12.0f),
                        juce::Justification::left);
         }
     }

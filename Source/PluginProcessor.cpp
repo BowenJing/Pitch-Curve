@@ -28,6 +28,7 @@ void ContourAudioProcessor::prepareToPlay(double sampleRate, int maximumBlockSiz
     freeRunningSample = 0;
     hostPlaybackSample = 0;
     hostWasPlaying = false;
+    displayPosition.store(0.0f);
     stretcher.presetDefault(getTotalNumInputChannels(), sampleRate);
     stretcher.reset();
     setLatencySamples(stretcher.inputLatency() + stretcher.outputLatency());
@@ -114,9 +115,11 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
     bool transportStopped = false;
     int64_t timelineSample = freeRunningSample + stretcher.inputLatency();
     if (auto* hostPlayHead = getPlayHead())
+    {
+        hasHostTransport = true;
+        transportStopped = true;
         if (const auto position = hostPlayHead->getPosition())
         {
-            hasHostTransport = true;
             transportStopped = ! position->getIsPlaying();
             if (transportStopped)
             {
@@ -132,6 +135,13 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
                 timelineSample = hostPlaybackSample + stretcher.inputLatency();
             }
         }
+        else
+        {
+            hostPlaybackSample = 0;
+            hostWasPlaying = false;
+            timelineSample = stretcher.inputLatency();
+        }
+    }
 
     const auto durationSamples = juce::jmax<int64_t>(
         1, static_cast<int64_t>(duration * currentSampleRate));
@@ -146,7 +156,10 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
             static_cast<float>(wrappedSample) / static_cast<float>(durationSamples);
         displayPosition.store(transportStopped ? 0.0f : position);
 
-        pitchSmoother.setTargetValue(contourEnabled ? curveValueAt(position, curve) * amount : 0.0f);
+        const float targetCents = contourEnabled
+            ? juce::jlimit(-2400.0f, 2400.0f, curveValueAt(position, curve) * amount)
+            : 0.0f;
+        pitchSmoother.setTargetValue(targetCents);
         stretcher.setTransposeSemitones(pitchSmoother.skip(blockSamples) / 100.0f);
 
         std::array<const float*, 2> inputPointers {};
@@ -198,7 +211,7 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
     for (auto& point : points)
     {
         point.position = juce::jlimit(0.0f, 1.0f, point.position);
-        point.cents = juce::jlimit(-200.0f, 200.0f, point.cents);
+        point.cents = juce::jlimit(-1200.0f, 1200.0f, point.cents);
         point.confidence = juce::jlimit(0.0f, 1.0f, point.confidence);
     }
 
