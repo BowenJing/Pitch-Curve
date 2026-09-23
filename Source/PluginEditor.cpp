@@ -450,20 +450,38 @@ void ContourAudioProcessorEditor::resized()
                                         getHeight() - 246);
     auto control = content.removeFromRight(controlWidth);
     curveEditor.setBounds(content.reduced(0, 0).withTrimmedRight(16));
-    const int fieldWidth = 55;
-    const int availableHeight = control.getHeight() - 46;
-    const int knobHeight = juce::jlimit(68, 105, (availableHeight - 55) / 2);
-    duration.setBounds(control.getX(), control.getY(), controlWidth, knobHeight);
-    const int fieldsY = duration.getBottom();
-    secondsEditor.setBounds(control.getX(), fieldsY, fieldWidth, 30);
-    framesEditor.setBounds(control.getRight() - fieldWidth, fieldsY, fieldWidth, 30);
-    secondsLabel.setBounds(secondsEditor.getX(), fieldsY + 30, fieldWidth, 20);
-    framesLabel.setBounds(framesEditor.getX(), fieldsY + 30, fieldWidth, 20);
 
-    const int amountY = fieldsY + 51;
-    amount.setBounds(control.getX(), amountY, controlWidth, knobHeight);
-    amountLabel.setBounds(control.getX(), amount.getBottom() - 4, controlWidth, 20);
-    clearButton.setBounds(control.getX(), control.getBottom() - 38, controlWidth, 38);
+    const int clearHeight = 38;
+    clearButton.setBounds(control.removeFromBottom(clearHeight));
+    control.removeFromBottom(8);
+    auto timeSection = control.removeFromTop(control.getHeight() / 2);
+    auto amountSection = control;
+
+    const int fieldWidth = 55;
+    const int timeFieldsHeight = 44;
+    const int amountTextAndLabelHeight = 40;
+    const int ringSize = juce::jlimit(
+        54, 90,
+        juce::jmin(controlWidth,
+                   juce::jmin(timeSection.getHeight() - timeFieldsHeight,
+                              amountSection.getHeight() - amountTextAndLabelHeight)));
+
+    duration.setBounds(juce::Rectangle<int>(ringSize, ringSize)
+                           .withCentre({ timeSection.getCentreX(),
+                                         timeSection.getY() + ringSize / 2 }));
+    const int fieldsY = timeSection.getBottom() - timeFieldsHeight;
+    secondsEditor.setBounds(timeSection.getX(), fieldsY, fieldWidth, 28);
+    framesEditor.setBounds(timeSection.getRight() - fieldWidth, fieldsY, fieldWidth, 28);
+    secondsLabel.setBounds(secondsEditor.getX(), fieldsY + 28, fieldWidth, 16);
+    framesLabel.setBounds(framesEditor.getX(), fieldsY + 28, fieldWidth, 16);
+
+    const int amountControlsHeight = ringSize + amountTextAndLabelHeight;
+    const int amountY = amountSection.getY()
+                      + juce::jmax(0, (amountSection.getHeight() - amountControlsHeight) / 2);
+    amount.setBounds(amountSection.getCentreX() - ringSize / 2, amountY,
+                     ringSize, ringSize + 22);
+    amountLabel.setBounds(amountSection.getX(), amount.getBottom(),
+                          controlWidth, 18);
 }
 
 bool ContourAudioProcessorEditor::isInterestedInFileDrag(const juce::StringArray& files)
