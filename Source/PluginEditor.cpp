@@ -8,7 +8,6 @@ const auto panelLight = juce::Colour::fromRGB(32, 36, 44);
 const auto text = juce::Colour::fromRGB(238, 240, 244);
 const auto muted = juce::Colour::fromRGB(139, 145, 158);
 const auto accent = juce::Colour::fromRGB(183, 255, 104);
-const auto cyan = juce::Colour::fromRGB(90, 216, 224);
 }
 
 ContourLookAndFeel::ContourLookAndFeel()
@@ -61,6 +60,11 @@ void ContourLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& b
         colour = colour.darker(0.12f);
     g.setColour(colour.withAlpha(button.isEnabled() ? 1.0f : 0.35f));
     g.fillRoundedRectangle(button.getLocalBounds().toFloat(), 8.0f);
+}
+
+juce::Font ContourLookAndFeel::getTextButtonFont(juce::TextButton&, int)
+{
+    return juce::Font(juce::FontOptions(12.0f, juce::Font::bold));
 }
 
 CurveEditor::CurveEditor(ContourAudioProcessor& owner) : processor(owner)
@@ -139,14 +143,16 @@ void CurveEditor::paint(juce::Graphics& g)
         fill.lineTo(bounds.getRight(), yFromCents(0.0f));
         fill.lineTo(bounds.getX(), yFromCents(0.0f));
         fill.closeSubPath();
-        juce::ColourGradient gradient(Palette::cyan.withAlpha(0.20f), bounds.getCentreX(), bounds.getY(),
-                                      Palette::cyan.withAlpha(0.01f), bounds.getCentreX(), bounds.getBottom(), false);
+        juce::ColourGradient gradient(Palette::accent.withAlpha(0.16f),
+                                      bounds.getCentreX(), bounds.getY(),
+                                      Palette::accent.withAlpha(0.01f),
+                                      bounds.getCentreX(), bounds.getBottom(), false);
         g.setGradientFill(gradient);
         g.fillPath(fill);
-        g.setColour(Palette::cyan.withAlpha(0.18f));
+        g.setColour(Palette::accent.withAlpha(0.16f));
         g.strokePath(curve, juce::PathStrokeType(7.0f, juce::PathStrokeType::curved,
                                                  juce::PathStrokeType::rounded));
-        g.setColour(Palette::cyan);
+        g.setColour(Palette::accent);
         g.strokePath(curve, juce::PathStrokeType(2.0f, juce::PathStrokeType::curved,
                                                  juce::PathStrokeType::rounded));
     }
@@ -312,7 +318,7 @@ void AudioWaveformView::paint(juce::Graphics& g)
     g.setColour(Palette::muted.withAlpha(0.24f));
     g.drawHorizontalLine(juce::roundToInt(bounds.getCentreY()),
                          bounds.getX(), bounds.getRight());
-    g.setColour(Palette::cyan.withAlpha(0.88f));
+    g.setColour(Palette::accent.withAlpha(0.88f));
     thumbnail.drawChannels(g, bounds.toNearestInt(), 0.0,
                            thumbnail.getTotalLength(), 1.0f);
 }
@@ -332,40 +338,47 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     setSize(900, 620);
 
     title.setText("CONTOUR", juce::dontSendNotification);
-    title.setFont(juce::Font(juce::FontOptions(25.0f, juce::Font::bold)));
+    title.setFont(juce::Font(juce::FontOptions(24.0f, juce::Font::bold)));
     subtitle.setText("Pitch motion, transferred.", juce::dontSendNotification);
     subtitle.setColour(juce::Label::textColourId, Palette::muted);
+    subtitle.setFont(juce::Font(juce::FontOptions(12.0f)));
     status.setText("Draw a curve, or learn one from audio", juce::dontSendNotification);
     status.setColour(juce::Label::textColourId, Palette::muted);
+    status.setFont(juce::Font(juce::FontOptions(12.0f)));
+    status.setJustificationType(juce::Justification::centredRight);
     fileName.setText("No Audio File", juce::dontSendNotification);
     fileName.setColour(juce::Label::textColourId, Palette::muted);
     fileName.setJustificationType(juce::Justification::centred);
     fileName.setFont(juce::Font(juce::FontOptions(12.0f)));
     secondsLabel.setText("SECOND", juce::dontSendNotification);
     framesLabel.setText("FRAME", juce::dontSendNotification);
-    for (auto* label : { &secondsLabel, &framesLabel })
+    amountLabel.setText("AMOUNT", juce::dontSendNotification);
+    for (auto* label : { &secondsLabel, &framesLabel, &amountLabel })
     {
         label->setColour(juce::Label::textColourId, Palette::muted);
         label->setJustificationType(juce::Justification::centred);
-        label->setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::bold)));
+        label->setFont(juce::Font(juce::FontOptions(11.0f, juce::Font::bold)));
     }
-    amountLabel.setText("AMOUNT", juce::dontSendNotification);
-    amountLabel.setColour(juce::Label::textColourId, Palette::muted);
-    amountLabel.setJustificationType(juce::Justification::centred);
 
-    for (auto* editor : { &secondsEditor, &framesEditor })
+    for (auto* editor : { &secondsEditor, &framesEditor, &amountEditor })
     {
-        editor->setInputRestrictions(4, "0123456789");
         editor->setJustification(juce::Justification::centred);
         editor->setSelectAllWhenFocused(false);
-        editor->setFont(juce::Font(juce::FontOptions(16.0f, juce::Font::bold)));
+        editor->setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
         editor->setColour(juce::TextEditor::backgroundColourId, Palette::panelLight);
         editor->setColour(juce::TextEditor::textColourId, Palette::text);
         editor->setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
         editor->setColour(juce::TextEditor::focusedOutlineColourId, Palette::accent);
+    }
+    for (auto* editor : { &secondsEditor, &framesEditor })
+    {
+        editor->setInputRestrictions(4, "0123456789");
         editor->onReturnKey = [this] { applyDurationTimecode(); };
         editor->onFocusLost = [this] { applyDurationTimecode(); };
     }
+    amountEditor.setInputRestrictions(3, "0123456789");
+    amountEditor.onReturnKey = [this] { applyAmountText(); };
+    amountEditor.onFocusLost = [this] { applyAmountText(); };
 
     timeKnob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     timeKnob.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
@@ -392,15 +405,17 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
                        juce::dontSendNotification);
     };
     amount.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-    amount.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 65, 22);
+    amount.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     amount.setDoubleClickReturnValue(true, 1.0);
+    amount.onValueChange = [this] { updateAmountText(); };
     amountAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processor.parameters(), "amount", amount);
+    updateAmountText();
 
     for (auto* component : std::initializer_list<juce::Component*> {
              &title, &subtitle, &status, &waveform, &fileName, &fileButton, &learnButton,
              &clearButton, &secondsLabel, &framesLabel, &secondsEditor, &framesEditor,
-             &timeKnob, &amountLabel, &amount, &curveEditor })
+             &amountEditor, &timeKnob, &amountLabel, &amount, &curveEditor })
         addAndMakeVisible(component);
 }
 
@@ -457,31 +472,50 @@ void ContourAudioProcessorEditor::resized()
     auto timeSection = control.removeFromTop(control.getHeight() / 2);
     auto amountSection = control;
 
-    const int fieldWidth = 55;
-    const int timeFieldsHeight = 44;
-    const int amountTextAndLabelHeight = 40;
+    const int fieldWidth = 54;
+    const int fieldGap = 8;
+    const int fieldHeight = 28;
+    const int labelHeight = 18;
+    const int knobToFieldGap = 6;
+    const int valueBlockHeight = knobToFieldGap + fieldHeight + labelHeight;
     const int ringSize = juce::jlimit(
         54, 90,
         juce::jmin(controlWidth,
-                   juce::jmin(timeSection.getHeight() - timeFieldsHeight,
-                              amountSection.getHeight() - amountTextAndLabelHeight)));
+                   juce::jmin(timeSection.getHeight() - valueBlockHeight,
+                              amountSection.getHeight() - valueBlockHeight)));
 
-    timeKnob.setBounds(juce::Rectangle<int>(ringSize, ringSize)
-                           .withCentre({ timeSection.getCentreX(),
-                                         timeSection.getY() + ringSize / 2 }));
-    const int fieldsY = timeSection.getBottom() - timeFieldsHeight;
-    secondsEditor.setBounds(timeSection.getX(), fieldsY, fieldWidth, 28);
-    framesEditor.setBounds(timeSection.getRight() - fieldWidth, fieldsY, fieldWidth, 28);
-    secondsLabel.setBounds(secondsEditor.getX(), fieldsY + 28, fieldWidth, 16);
-    framesLabel.setBounds(framesEditor.getX(), fieldsY + 28, fieldWidth, 16);
+    const auto layoutControlGroup = [ringSize, valueBlockHeight, knobToFieldGap,
+                                     fieldWidth, fieldHeight, labelHeight]
+        (juce::Rectangle<int> section, juce::Slider& knob,
+         juce::TextEditor& editor, juce::Label& label)
+    {
+        const int groupHeight = ringSize + valueBlockHeight;
+        const int top = section.getY() + juce::jmax(0, (section.getHeight() - groupHeight) / 2);
+        knob.setBounds(section.getCentreX() - ringSize / 2, top, ringSize, ringSize);
+        const int fieldY = knob.getBottom() + knobToFieldGap;
+        editor.setBounds(section.getCentreX() - fieldWidth / 2, fieldY,
+                         fieldWidth, fieldHeight);
+        label.setBounds(section.getCentreX() - fieldWidth / 2,
+                        editor.getBottom(), fieldWidth, labelHeight);
+    };
 
-    const int amountControlsHeight = ringSize + amountTextAndLabelHeight;
-    const int amountY = amountSection.getY()
-                      + juce::jmax(0, (amountSection.getHeight() - amountControlsHeight) / 2);
-    amount.setBounds(amountSection.getCentreX() - ringSize / 2, amountY,
-                     ringSize, ringSize + 22);
-    amountLabel.setBounds(amountSection.getX(), amount.getBottom(),
-                          controlWidth, 18);
+    const int timeGroupHeight = ringSize + valueBlockHeight;
+    const int timeTop = timeSection.getY()
+                      + juce::jmax(0, (timeSection.getHeight() - timeGroupHeight) / 2);
+    timeKnob.setBounds(timeSection.getCentreX() - ringSize / 2,
+                       timeTop, ringSize, ringSize);
+    const int fieldsY = timeKnob.getBottom() + knobToFieldGap;
+    const int timeFieldsWidth = fieldWidth * 2 + fieldGap;
+    const int fieldsX = timeSection.getCentreX() - timeFieldsWidth / 2;
+    secondsEditor.setBounds(fieldsX, fieldsY, fieldWidth, fieldHeight);
+    framesEditor.setBounds(fieldsX + fieldWidth + fieldGap, fieldsY,
+                           fieldWidth, fieldHeight);
+    secondsLabel.setBounds(secondsEditor.getX(), secondsEditor.getBottom(),
+                           fieldWidth, labelHeight);
+    framesLabel.setBounds(framesEditor.getX(), framesEditor.getBottom(),
+                          fieldWidth, labelHeight);
+
+    layoutControlGroup(amountSection, amount, amountEditor, amountLabel);
 }
 
 bool ContourAudioProcessorEditor::isInterestedInFileDrag(const juce::StringArray& files)
@@ -535,6 +569,21 @@ void ContourAudioProcessorEditor::updateDurationTimecode()
     if (framesEditor.getText() != framesText)
         framesEditor.setText(framesText, false);
     timeKnob.setValue(totalFrames, juce::dontSendNotification);
+}
+
+void ContourAudioProcessorEditor::applyAmountText()
+{
+    const int percentage = juce::jlimit(0, 200, amountEditor.getText().getIntValue());
+    amount.setValue(static_cast<double>(percentage) / 100.0,
+                    juce::sendNotificationSync);
+    updateAmountText();
+}
+
+void ContourAudioProcessorEditor::updateAmountText()
+{
+    const auto text = juce::String(juce::roundToInt(amount.getValue() * 100.0));
+    if (amountEditor.getText() != text)
+        amountEditor.setText(text, false);
 }
 
 void ContourAudioProcessorEditor::chooseFile()

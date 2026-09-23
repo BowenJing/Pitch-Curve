@@ -11,6 +11,7 @@ public:
                           float, float, juce::Slider&) override;
     void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour&,
                               bool, bool) override;
+    juce::Font getTextButtonFont(juce::TextButton&, int) override;
 };
 
 class CurveEditor final : public juce::Component,
@@ -76,6 +77,8 @@ private:
     void setSelectedFile(const juce::File&);
     void applyDurationTimecode();
     void updateDurationTimecode();
+    void applyAmountText();
+    void updateAmountText();
 
     ContourAudioProcessor& processor;
     ContourLookAndFeel lookAndFeel;
@@ -93,6 +96,7 @@ private:
     juce::Label amountLabel;
     juce::TextEditor secondsEditor;
     juce::TextEditor framesEditor;
+    juce::TextEditor amountEditor;
     juce::Slider timeKnob;
     juce::Slider amount;
     juce::File selectedFile;
