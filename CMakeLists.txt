@@ -143,6 +143,32 @@ if(BUILD_TESTING)
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
     add_test(NAME ContourPitchDetector COMMAND ContourTests)
+
+    juce_add_console_app(ContourProcessorTests PRODUCT_NAME "Contour Processor Tests")
+    juce_generate_juce_header(ContourProcessorTests)
+    target_sources(ContourProcessorTests PRIVATE
+        Tests/PluginProcessorTests.cpp
+        Source/PitchDetector.cpp
+        Source/PitchDetector.h
+        Source/PluginProcessor.cpp
+        Source/PluginProcessor.h
+        Source/PluginEditor.cpp
+        Source/PluginEditor.h)
+    target_include_directories(ContourProcessorTests PRIVATE Source)
+    target_compile_definitions(ContourProcessorTests PRIVATE
+        JUCE_USE_CURL=0
+        JUCE_WEB_BROWSER=0
+        JUCE_VST3_CAN_REPLACE_VST2=0
+        JUCE_DISPLAY_SPLASH_SCREEN=0
+        JucePlugin_Name="Contour")
+    target_link_libraries(ContourProcessorTests PRIVATE
+        juce::juce_audio_utils
+        juce::juce_dsp
+        juce::juce_gui_extra
+        signalsmith-stretch
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags)
+    add_test(NAME ContourProcessorSafety COMMAND ContourProcessorTests)
 endif()
 
 set(CPACK_PACKAGE_NAME "Contour")
