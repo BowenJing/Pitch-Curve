@@ -1,5 +1,7 @@
 /build/
 /build-windows/
+/.xwin/
+/.xwin-cache/
 /_CPack_Packages/
 /Contour-*.deb
 /Contour-*.deb.sha256

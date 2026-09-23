@@ -44,12 +44,16 @@ required. The installer copies `Contour.vst3` into the system Common Files VST3
 directory. Sign binaries and the final installer with Authenticode before
 public release.
 
-For an unsigned x64 development build from Debian/Ubuntu, install MinGW-w64 and
-NSIS, then use the included toolchain:
+For an unsigned x64 development build from Debian/Ubuntu, use LLVM 18,
+Microsoft's CRT/SDK acquired with `xwin`, and NSIS. JUCE 8 explicitly does not
+support MinGW.
 
 ```bash
+sudo apt-get install clang-18 clang-tools-18 lld-18 llvm-18 nsis
+cargo install xwin --locked
+xwin --accept-license --arch x86_64 splat --output .xwin
 cmake -S . -B build-windows \
-  -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/mingw-x64.cmake \
+  -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/clang-cl-x64.cmake \
   -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
 cmake --build build-windows --parallel
 cpack --config build-windows/CPackConfig.cmake -G NSIS
