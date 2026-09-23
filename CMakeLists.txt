@@ -35,37 +35,6 @@ if(APPLE)
     list(APPEND CONTOUR_FORMATS AU)
 endif()
 
-if(APPLE)
-    install(DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Contour.vst3"
-        DESTINATION "Library/Audio/Plug-Ins/VST3" COMPONENT ContourRuntime)
-    install(DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/AU/Contour.component"
-        DESTINATION "Library/Audio/Plug-Ins/Components" COMPONENT ContourRuntime)
-    install(DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/Standalone/Contour.app"
-        DESTINATION "Applications" COMPONENT ContourRuntime)
-elseif(WIN32)
-    install(DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Contour.vst3"
-        DESTINATION "VST3" COMPONENT ContourRuntime)
-    install(TARGETS Contour_Standalone RUNTIME DESTINATION "Standalone"
-        COMPONENT ContourRuntime)
-else()
-    install(DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Contour.vst3"
-        DESTINATION "lib/vst3" COMPONENT ContourRuntime)
-    install(PROGRAMS "$<TARGET_FILE:Contour_Standalone>"
-        DESTINATION "bin" RENAME "contour" COMPONENT ContourRuntime)
-endif()
-
-if(UNIX AND NOT APPLE)
-    target_compile_options(Contour PRIVATE -fstack-protector-strong)
-    target_compile_definitions(Contour PRIVATE _FORTIFY_SOURCE=3)
-    target_link_options(Contour_VST3 PRIVATE -Wl,-z,relro,-z,now)
-    target_link_options(Contour_Standalone PRIVATE -Wl,-z,relro,-z,now)
-endif()
-
 juce_add_plugin(Contour
     COMPANY_NAME "Contour Audio"
     BUNDLE_ID "audio.contour.plugin"
@@ -110,6 +79,37 @@ if(APPLE)
     set_target_properties(Contour PROPERTIES
         XCODE_ATTRIBUTE_ARCHS "arm64 x86_64"
         OSX_ARCHITECTURES "arm64;x86_64")
+endif()
+
+if(UNIX AND NOT APPLE)
+    target_compile_options(Contour PRIVATE -fstack-protector-strong)
+    target_compile_definitions(Contour PRIVATE _FORTIFY_SOURCE=3)
+    target_link_options(Contour_VST3 PRIVATE -Wl,-z,relro,-z,now)
+    target_link_options(Contour_Standalone PRIVATE -Wl,-z,relro,-z,now)
+endif()
+
+if(APPLE)
+    install(DIRECTORY
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Contour.vst3"
+        DESTINATION "Library/Audio/Plug-Ins/VST3" COMPONENT ContourRuntime)
+    install(DIRECTORY
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/AU/Contour.component"
+        DESTINATION "Library/Audio/Plug-Ins/Components" COMPONENT ContourRuntime)
+    install(DIRECTORY
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/Standalone/Contour.app"
+        DESTINATION "Applications" COMPONENT ContourRuntime)
+elseif(WIN32)
+    install(DIRECTORY
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Contour.vst3"
+        DESTINATION "VST3" COMPONENT ContourRuntime)
+    install(TARGETS Contour_Standalone RUNTIME DESTINATION "Standalone"
+        COMPONENT ContourRuntime)
+else()
+    install(DIRECTORY
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Contour.vst3"
+        DESTINATION "lib/vst3" COMPONENT ContourRuntime)
+    install(PROGRAMS "$<TARGET_FILE:Contour_Standalone>"
+        DESTINATION "bin" RENAME "contour" COMPONENT ContourRuntime)
 endif()
 
 include(CTest)
