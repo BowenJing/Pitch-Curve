@@ -1,5 +1,6 @@
 /build/
 /build-windows/
+/build-sanitize/
 /.xwin/
 /.xwin-cache/
 /_CPack_Packages/
