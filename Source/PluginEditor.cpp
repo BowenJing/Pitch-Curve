@@ -235,6 +235,44 @@ void CurveEditor::timerCallback()
     repaint();
 }
 
+AudioWaveformView::AudioWaveformView()
+{
+    formatManager.registerBasicFormats();
+    thumbnail.addChangeListener(this);
+    setInterceptsMouseClicks(false, false);
+}
+
+void AudioWaveformView::setFile(const juce::File& file)
+{
+    thumbnail.setSource(new juce::FileInputSource(file));
+    repaint();
+}
+
+void AudioWaveformView::clear()
+{
+    thumbnail.clear();
+    repaint();
+}
+
+void AudioWaveformView::paint(juce::Graphics& g)
+{
+    if (thumbnail.getTotalLength() <= 0.0)
+        return;
+
+    const auto bounds = getLocalBounds().toFloat().reduced(2.0f, 1.0f);
+    g.setColour(Palette::muted.withAlpha(0.24f));
+    g.drawHorizontalLine(juce::roundToInt(bounds.getCentreY()),
+                         bounds.getX(), bounds.getRight());
+    g.setColour(Palette::cyan.withAlpha(0.88f));
+    thumbnail.drawChannels(g, bounds.toNearestInt(), 0.0,
+                           thumbnail.getTotalLength(), 1.0f);
+}
+
+void AudioWaveformView::changeListenerCallback(juce::ChangeBroadcaster*)
+{
+    repaint();
+}
+
 ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& owner)
     : AudioProcessorEditor(owner), juce::Thread("Contour analysis"),
       processor(owner), curveEditor(owner)
@@ -250,7 +288,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     subtitle.setColour(juce::Label::textColourId, Palette::muted);
     status.setText("Draw a curve, or learn one from audio", juce::dontSendNotification);
     status.setColour(juce::Label::textColourId, Palette::muted);
-    fileName.setText("WAV · AIFF · FLAC · MP3", juce::dontSendNotification);
+    fileName.setText("No Audio File", juce::dontSendNotification);
     fileName.setColour(juce::Label::textColourId, Palette::muted);
     fileName.setJustificationType(juce::Justification::centred);
     amountLabel.setText("AMOUNT", juce::dontSendNotification);
@@ -265,7 +303,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     clearButton.onClick = [this]
     {
         processor.setContour({}, processor.getContourDuration());
-        status.setText("Curve cleared — draw or learn a new contour",
+        status.setText("Curve cleared - draw or learn a new contour",
                        juce::dontSendNotification);
     };
     amount.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
@@ -275,8 +313,8 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
         processor.parameters(), "amount", amount);
 
     for (auto* component : std::initializer_list<juce::Component*> {
-             &title, &subtitle, &status, &fileName, &fileButton, &learnButton, &clearButton,
-             &amountLabel, &amount, &curveEditor })
+             &title, &subtitle, &status, &waveform, &fileName, &fileButton, &learnButton,
+             &clearButton, &amountLabel, &amount, &curveEditor })
         addAndMakeVisible(component);
 }
 
@@ -307,7 +345,17 @@ void ContourAudioProcessorEditor::resized()
     auto drop = juce::Rectangle<int>(margin, 108, getWidth() - margin * 2, 70);
     fileButton.setBounds(drop.removeFromLeft(220));
     learnButton.setBounds(drop.removeFromRight(180));
-    fileName.setBounds(drop.reduced(16, 0));
+    auto preview = drop.reduced(16, 2);
+    if (selectedFile.existsAsFile())
+    {
+        fileName.setBounds(preview.removeFromTop(20));
+        waveform.setBounds(preview.reduced(0, 2));
+    }
+    else
+    {
+        fileName.setBounds(preview);
+        waveform.setBounds({});
+    }
 
     const int controlWidth = 120;
     auto content = juce::Rectangle<int>(margin, 210, getWidth() - margin * 2,
@@ -354,8 +402,10 @@ void ContourAudioProcessorEditor::setSelectedFile(const juce::File& file)
 {
     selectedFile = file;
     fileName.setText(file.getFileName(), juce::dontSendNotification);
+    waveform.setFile(file);
     status.setText("Ready to analyse", juce::dontSendNotification);
     learnButton.setEnabled(true);
+    resized();
 }
 
 void ContourAudioProcessorEditor::beginLearning()
@@ -363,7 +413,7 @@ void ContourAudioProcessorEditor::beginLearning()
     if (! selectedFile.existsAsFile() || analysing.exchange(true))
         return;
     analysisFile = selectedFile;
-    status.setText("Listening for pitch movement…", juce::dontSendNotification);
+    status.setText("Listening for pitch movement...", juce::dontSendNotification);
     learnButton.setEnabled(false);
     fileButton.setEnabled(false);
     startThread();
@@ -423,12 +473,12 @@ void ContourAudioProcessorEditor::run()
         safe->fileButton.setEnabled(true);
         if (result.points.empty())
         {
-            safe->status.setText("No stable pitch found — try a monophonic source",
+            safe->status.setText("No stable pitch found - try a monophonic source",
                                  juce::dontSendNotification);
             return;
         }
         safe->processor.setContour(std::move(result.points), result.durationSeconds);
-        safe->status.setText(juce::String(result.referenceHz, 1) + " Hz reference · "
+        safe->status.setText(juce::String(result.referenceHz, 1) + " Hz reference | "
                                  + juce::String(result.durationSeconds, 1) + " s contour",
                              juce::dontSendNotification);
     });

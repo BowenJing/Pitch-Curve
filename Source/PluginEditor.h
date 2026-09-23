@@ -37,6 +37,23 @@ private:
     uint64_t observedRevision = 0;
 };
 
+class AudioWaveformView final : public juce::Component,
+                                private juce::ChangeListener
+{
+public:
+    AudioWaveformView();
+    void setFile(const juce::File&);
+    void clear();
+    void paint(juce::Graphics&) override;
+
+private:
+    void changeListenerCallback(juce::ChangeBroadcaster*) override;
+
+    juce::AudioFormatManager formatManager;
+    juce::AudioThumbnailCache thumbnailCache { 4 };
+    juce::AudioThumbnail thumbnail { 256, formatManager, thumbnailCache };
+};
+
 class ContourAudioProcessorEditor final : public juce::AudioProcessorEditor,
                                           public juce::FileDragAndDropTarget,
                                           private juce::Thread
@@ -59,6 +76,7 @@ private:
     ContourAudioProcessor& processor;
     ContourLookAndFeel lookAndFeel;
     CurveEditor curveEditor;
+    AudioWaveformView waveform;
     juce::TextButton fileButton { "DROP AUDIO OR BROWSE" };
     juce::TextButton learnButton { "LEARN CONTOUR" };
     juce::TextButton clearButton { "CLEAR CURVE" };
