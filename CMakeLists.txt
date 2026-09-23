@@ -61,6 +61,7 @@ juce_generate_juce_header(Contour)
 
 if(CMAKE_CROSSCOMPILING AND WIN32)
     find_program(WINE_EXECUTABLE wine REQUIRED)
+    _juce_add_vst3_manifest_helper_target(Contour)
     if(NOT TARGET Contour_vst3_helper)
         message(FATAL_ERROR "JUCE did not create the VST3 manifest helper target")
     endif()
