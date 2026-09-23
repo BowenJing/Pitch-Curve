@@ -10,6 +10,12 @@
 /Contour-*.tar.gz.sha256
 /Contour-*-Windows-*.exe
 /Contour-*-Windows-*.exe.sha256
+/PitchTransform-*.deb
+/PitchTransform-*.deb.sha256
+/PitchTransform-*.tar.gz
+/PitchTransform-*.tar.gz.sha256
+/PitchTransform-*-Windows-*.exe
+/PitchTransform-*-Windows-*.exe.sha256
 /.cache/
 *.jucer
 .DS_Store
