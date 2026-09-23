@@ -7,6 +7,13 @@
 
 namespace
 {
+class TestPlayHead final : public juce::AudioPlayHead
+{
+public:
+    juce::Optional<PositionInfo> getPosition() const override { return position; }
+    PositionInfo position;
+};
+
 bool testLatencyMatchedBypass()
 {
     constexpr double sampleRate = 48000.0;
@@ -155,6 +162,38 @@ bool testStateRoundTripAndBounds()
     }
     return true;
 }
+
+bool testStoppedTransportResetsDisplay()
+{
+    ContourAudioProcessor processor;
+    constexpr double sampleRate = 48000.0;
+    processor.prepareToPlay(sampleRate, 128);
+    processor.setContour({ { 0.0f, -20.0f, 1.0f }, { 1.0f, -20.0f, 1.0f } }, 1.0f);
+
+    TestPlayHead playHead;
+    playHead.position.setIsPlaying(true);
+    playHead.position.setTimeInSamples(24000);
+    processor.setPlayHead(&playHead);
+
+    juce::AudioBuffer<float> block(2, 128);
+    block.clear();
+    juce::MidiBuffer midi;
+    processor.processBlock(block, midi);
+    if (processor.getPlayheadPosition() < 0.1f)
+    {
+        std::cerr << "Playing transport must advance the curve display\n";
+        return false;
+    }
+
+    playHead.position.setIsPlaying(false);
+    processor.processBlock(block, midi);
+    if (std::abs(processor.getPlayheadPosition()) > 1.0e-6f)
+    {
+        std::cerr << "Stopped transport must reset the curve display\n";
+        return false;
+    }
+    return true;
+}
 }
 
 int main()
@@ -162,7 +201,8 @@ int main()
     juce::ScopedJuceInitialiser_GUI initialiseJuce;
     if (! testLatencyMatchedBypass()
         || ! testContourWithOversizedBlocks()
-        || ! testStateRoundTripAndBounds())
+        || ! testStateRoundTripAndBounds()
+        || ! testStoppedTransportResetsDisplay())
         return 1;
 
     std::cout << "Processor safety tests passed\n";

@@ -339,9 +339,36 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     fileName.setColour(juce::Label::textColourId, Palette::muted);
     fileName.setJustificationType(juce::Justification::centred);
     fileName.setFont(juce::Font(juce::FontOptions(12.0f)));
+    durationLabel.setText("DURATION - 30 FPS", juce::dontSendNotification);
+    durationLabel.setColour(juce::Label::textColourId, Palette::muted);
+    durationLabel.setJustificationType(juce::Justification::centred);
+    durationLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
+    secondsLabel.setText("SECOND", juce::dontSendNotification);
+    framesLabel.setText("FRAME", juce::dontSendNotification);
+    for (auto* label : { &secondsLabel, &framesLabel })
+    {
+        label->setColour(juce::Label::textColourId, Palette::muted);
+        label->setJustificationType(juce::Justification::centred);
+        label->setFont(juce::Font(juce::FontOptions(9.0f)));
+    }
     amountLabel.setText("AMOUNT", juce::dontSendNotification);
     amountLabel.setColour(juce::Label::textColourId, Palette::muted);
     amountLabel.setJustificationType(juce::Justification::centred);
+
+    for (auto* editor : { &secondsEditor, &framesEditor })
+    {
+        editor->setInputRestrictions(4, "0123456789");
+        editor->setJustification(juce::Justification::centred);
+        editor->setSelectAllWhenFocused(true);
+        editor->setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
+        editor->setColour(juce::TextEditor::backgroundColourId, Palette::panelLight);
+        editor->setColour(juce::TextEditor::textColourId, Palette::text);
+        editor->setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
+        editor->setColour(juce::TextEditor::focusedOutlineColourId, Palette::accent);
+        editor->onReturnKey = [this] { applyDurationTimecode(); };
+        editor->onFocusLost = [this] { applyDurationTimecode(); };
+    }
+    updateDurationTimecode();
 
     fileButton.onClick = [this] { chooseFile(); };
     learnButton.setComponentID("primary");
@@ -362,7 +389,8 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
 
     for (auto* component : std::initializer_list<juce::Component*> {
              &title, &subtitle, &status, &waveform, &fileName, &fileButton, &learnButton,
-             &clearButton, &amountLabel, &amount, &curveEditor })
+             &clearButton, &durationLabel, &secondsLabel, &framesLabel, &secondsEditor,
+             &framesEditor, &amountLabel, &amount, &curveEditor })
         addAndMakeVisible(component);
 }
 
@@ -412,8 +440,17 @@ void ContourAudioProcessorEditor::resized()
                                         getHeight() - 246);
     auto control = content.removeFromRight(controlWidth);
     curveEditor.setBounds(content.reduced(0, 0).withTrimmedRight(16));
-    amount.setBounds(control.getX(), control.getCentreY() - 65, controlWidth, 120);
-    amountLabel.setBounds(control.getX(), control.getCentreY() + 54, controlWidth, 24);
+    durationLabel.setBounds(control.getX(), control.getY() + 2, controlWidth, 18);
+    const int fieldWidth = 55;
+    secondsEditor.setBounds(control.getX(), control.getY() + 23, fieldWidth, 27);
+    framesEditor.setBounds(control.getRight() - fieldWidth, control.getY() + 23,
+                           fieldWidth, 27);
+    secondsLabel.setBounds(secondsEditor.getX(), control.getY() + 51, fieldWidth, 16);
+    framesLabel.setBounds(framesEditor.getX(), control.getY() + 51, fieldWidth, 16);
+
+    const auto amountArea = control.withTrimmedTop(72).withTrimmedBottom(48);
+    amount.setBounds(control.getX(), amountArea.getCentreY() - 55, controlWidth, 105);
+    amountLabel.setBounds(control.getX(), amountArea.getCentreY() + 50, controlWidth, 20);
     clearButton.setBounds(control.getX(), control.getBottom() - 38, controlWidth, 38);
 }
 
@@ -430,6 +467,38 @@ void ContourAudioProcessorEditor::filesDropped(const juce::StringArray& files, i
 {
     if (isInterestedInFileDrag(files))
         setSelectedFile(juce::File(files[0]));
+}
+
+void ContourAudioProcessorEditor::applyDurationTimecode()
+{
+    constexpr int framesPerSecond = 30;
+    constexpr int maximumTotalFrames = 600 * framesPerSecond;
+    const int64_t enteredSeconds = juce::jmax<int64_t>(0, secondsEditor.getText().getIntValue());
+    const int64_t enteredFrames = juce::jmax<int64_t>(0, framesEditor.getText().getIntValue());
+    const int totalFrames = juce::jlimit(
+        1, maximumTotalFrames,
+        static_cast<int>(juce::jmin<int64_t>(
+            maximumTotalFrames, enteredSeconds * framesPerSecond + enteredFrames)));
+
+    const float duration = static_cast<float>(totalFrames)
+                         / static_cast<float>(framesPerSecond);
+    processor.setContour(processor.getContour(), duration);
+    updateDurationTimecode();
+    status.setText("Curve duration: " + juce::String(totalFrames / framesPerSecond)
+                       + " second " + juce::String(totalFrames % framesPerSecond)
+                       + " frame",
+                   juce::dontSendNotification);
+}
+
+void ContourAudioProcessorEditor::updateDurationTimecode()
+{
+    constexpr int framesPerSecond = 30;
+    constexpr int maximumTotalFrames = 600 * framesPerSecond;
+    const int totalFrames = juce::jlimit(
+        1, maximumTotalFrames,
+        juce::roundToInt(processor.getContourDuration() * framesPerSecond));
+    secondsEditor.setText(juce::String(totalFrames / framesPerSecond), false);
+    framesEditor.setText(juce::String(totalFrames % framesPerSecond), false);
 }
 
 void ContourAudioProcessorEditor::chooseFile()
@@ -528,6 +597,7 @@ void ContourAudioProcessorEditor::run()
             return;
         }
         safe->processor.setContour(std::move(result.points), result.durationSeconds);
+        safe->updateDurationTimecode();
         safe->status.setText(juce::String(result.referenceHz, 1) + " Hz reference | "
                                  + juce::String(result.durationSeconds, 1) + " s contour",
                              juce::dontSendNotification);

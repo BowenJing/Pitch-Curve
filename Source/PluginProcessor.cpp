@@ -108,11 +108,17 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
                              && std::abs(amount) > 1.0e-6f;
     effectMix.setTargetValue(contourEnabled ? 1.0f : 0.0f);
 
+    bool transportStopped = false;
     int64_t timelineSample = freeRunningSample;
     if (auto* hostPlayHead = getPlayHead())
         if (const auto position = hostPlayHead->getPosition())
-            if (const auto hostSample = position->getTimeInSamples())
+        {
+            transportStopped = ! position->getIsPlaying();
+            if (transportStopped)
+                timelineSample = stretcher.inputLatency();
+            else if (const auto hostSample = position->getTimeInSamples())
                 timelineSample = *hostSample;
+        }
 
     const auto durationSamples = juce::jmax<int64_t>(
         1, static_cast<int64_t>(duration * currentSampleRate));
@@ -125,7 +131,7 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
             ((blockTimeline % durationSamples) + durationSamples) % durationSamples;
         const float position =
             static_cast<float>(wrappedSample) / static_cast<float>(durationSamples);
-        displayPosition.store(position);
+        displayPosition.store(transportStopped ? 0.0f : position);
 
         pitchSmoother.setTargetValue(contourEnabled ? curveValueAt(position, curve) * amount : 0.0f);
         stretcher.setTransposeSemitones(pitchSmoother.skip(blockSamples) / 100.0f);
@@ -155,7 +161,7 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
         }
     }
     audioReadingCurveIndex.store(-1, std::memory_order_release);
-    freeRunningSample += samples;
+    freeRunningSample = transportStopped ? 0 : freeRunningSample + samples;
 }
 
 void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float durationSeconds)
@@ -214,7 +220,7 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
     auto& updated = curveBuffers[static_cast<size_t>(target)];
     updated.pointCount = points.size();
     std::copy(points.begin(), points.end(), updated.points.begin());
-    updated.durationSeconds = juce::jlimit(0.1f, 600.0f, durationSeconds);
+    updated.durationSeconds = juce::jlimit(1.0f / 30.0f, 600.0f, durationSeconds);
     publishedCurveIndex.store(target, std::memory_order_release);
     contourRevision.fetch_add(1);
 }
