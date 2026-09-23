@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(Contour
-    VERSION 0.2.0
+    VERSION 0.3.0
     DESCRIPTION "Learn and transfer expressive pitch contours"
     LANGUAGES C CXX)
 
@@ -86,6 +86,12 @@ if(UNIX AND NOT APPLE)
     target_compile_definitions(Contour PRIVATE _FORTIFY_SOURCE=3)
     target_link_options(Contour_VST3 PRIVATE -Wl,-z,relro,-z,now)
     target_link_options(Contour_Standalone PRIVATE -Wl,-z,relro,-z,now)
+elseif(MINGW)
+    target_compile_options(Contour PRIVATE -fstack-protector-strong)
+    target_link_options(Contour_VST3 PRIVATE
+        -static -Wl,--dynamicbase,--nxcompat,--high-entropy-va)
+    target_link_options(Contour_Standalone PRIVATE
+        -static -Wl,--dynamicbase,--nxcompat,--high-entropy-va)
 endif()
 
 if(APPLE)
@@ -149,9 +155,11 @@ if(APPLE)
     set(CPACK_PRODUCTBUILD_IDENTIFIER "audio.contour.installer")
 elseif(WIN32)
     set(CPACK_GENERATOR "NSIS;ZIP")
+    set(CPACK_PACKAGE_FILE_NAME "Contour-${PROJECT_VERSION}-Windows-x64")
     set(CPACK_NSIS_DISPLAY_NAME "Contour ${PROJECT_VERSION}")
     set(CPACK_NSIS_PACKAGE_NAME "Contour")
     set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
     set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS
         "nsExec::ExecToLog 'xcopy /E /I /Y \"$INSTDIR\\VST3\\Contour.vst3\" \"$COMMONFILES64\\VST3\\Contour.vst3\"'")
     set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS

@@ -185,15 +185,33 @@ void CurveEditor::drawAt(juce::Point<float> point)
 void CurveEditor::mouseDown(const juce::MouseEvent& event)
 {
     drawAt(event.position);
+    previousDrawPosition = event.position;
 }
 
 void CurveEditor::mouseDrag(const juce::MouseEvent& event)
 {
-    drawAt(event.position);
+    if (! previousDrawPosition)
+    {
+        drawAt(event.position);
+        previousDrawPosition = event.position;
+        return;
+    }
+
+    const auto delta = event.position - *previousDrawPosition;
+    const int steps = juce::jmax(1, juce::roundToInt(delta.getDistanceFromOrigin() / 3.0f));
+    for (int step = 1; step <= steps; ++step)
+        drawAt(*previousDrawPosition + delta * (static_cast<float>(step) / steps));
+    previousDrawPosition = event.position;
+}
+
+void CurveEditor::mouseUp(const juce::MouseEvent&)
+{
+    previousDrawPosition.reset();
 }
 
 void CurveEditor::mouseDoubleClick(const juce::MouseEvent&)
 {
+    previousDrawPosition.reset();
     editablePoints.clear();
     processor.setContour({}, processor.getContourDuration());
     repaint();
@@ -240,6 +258,12 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     learnButton.setColour(juce::TextButton::textColourOffId, Palette::background);
     learnButton.setEnabled(false);
     learnButton.onClick = [this] { beginLearning(); };
+    clearButton.onClick = [this]
+    {
+        processor.setContour({}, processor.getContourDuration());
+        status.setText("Curve cleared — draw or learn a new contour",
+                       juce::dontSendNotification);
+    };
     amount.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     amount.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 65, 22);
     amount.setDoubleClickReturnValue(true, 1.0);
@@ -247,7 +271,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
         processor.parameters(), "amount", amount);
 
     for (auto* component : std::initializer_list<juce::Component*> {
-             &title, &subtitle, &status, &fileName, &fileButton, &learnButton,
+             &title, &subtitle, &status, &fileName, &fileButton, &learnButton, &clearButton,
              &amountLabel, &amount, &curveEditor })
         addAndMakeVisible(component);
 }
@@ -288,6 +312,7 @@ void ContourAudioProcessorEditor::resized()
     curveEditor.setBounds(content.reduced(0, 0).withTrimmedRight(16));
     amount.setBounds(control.getX(), control.getCentreY() - 65, controlWidth, 120);
     amountLabel.setBounds(control.getX(), control.getCentreY() + 54, controlWidth, 24);
+    clearButton.setBounds(control.getX(), control.getBottom() - 38, controlWidth, 38);
 }
 
 bool ContourAudioProcessorEditor::isInterestedInFileDrag(const juce::StringArray& files)

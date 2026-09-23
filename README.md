@@ -4,7 +4,7 @@ Contour is a cross-platform audio plug-in that captures the small pitch movement
 of one performance and applies them to another. A contour can also be drawn
 directly in the editor.
 
-## Version 0.2
+## Version 0.3
 
 - Drag or browse for WAV, AIFF, FLAC, MP3, or OGG audio.
 - YIN-based monophonic pitch tracking with confidence gating and median
@@ -12,6 +12,7 @@ directly in the editor.
 - Learned movement is stored as cents relative to the source's median pitch, so
   the destination keeps its own musical register.
 - Editable ±200 cent curve with a host-synchronised playhead.
+- Gap-free freehand drawing and an explicit Clear Curve action.
 - 0–200% contour amount.
 - Signalsmith Stretch high-quality, phase-coherent pitch processing.
 - VST3 and standalone builds on macOS and Windows; Audio Unit builds on macOS.

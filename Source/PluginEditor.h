@@ -21,6 +21,7 @@ public:
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
     void mouseDoubleClick(const juce::MouseEvent&) override;
 
 private:
@@ -32,6 +33,7 @@ private:
 
     ContourAudioProcessor& processor;
     std::vector<PitchPoint> editablePoints;
+    std::optional<juce::Point<float>> previousDrawPosition;
     uint64_t observedRevision = 0;
 };
 
@@ -59,6 +61,7 @@ private:
     CurveEditor curveEditor;
     juce::TextButton fileButton { "DROP AUDIO OR BROWSE" };
     juce::TextButton learnButton { "LEARN CONTOUR" };
+    juce::TextButton clearButton { "CLEAR CURVE" };
     juce::Label title;
     juce::Label subtitle;
     juce::Label fileName;
