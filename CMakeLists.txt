@@ -217,7 +217,7 @@ elseif(WIN32)
     endif()
     set(CPACK_PACKAGE_FILE_NAME
         "PitchTransform-${PROJECT_VERSION}-Windows-${CONTOUR_WINDOWS_ARCH}")
-    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Sound Tools\\PitchTransform")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Sound Tools/PitchTransform")
     set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "Contour")
     set(CPACK_NSIS_DISPLAY_NAME "PitchTransform ${PROJECT_VERSION}")
     set(CPACK_NSIS_PACKAGE_NAME "PitchTransform")
