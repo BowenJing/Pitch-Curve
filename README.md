@@ -17,8 +17,8 @@ directly in the editor.
 - Signalsmith Stretch high-quality, phase-coherent pitch processing.
 - VST3 and standalone builds on macOS and Windows; Audio Unit builds on macOS.
 - Session state restores both the parameter and learned/drawn contour.
-- Defensive file/state limits, cancellable analysis, and safe oversized-block
-  fallback.
+- Defensive file/state limits, cancellable analysis, and bounded processing of
+  oversized host blocks.
 - Native package definitions for Linux, macOS Universal, Windows x64, and
   Windows ARM64.
 
@@ -67,10 +67,12 @@ plug-ins. Otherwise use the x64 build under the system's emulation layer.
 
 ## Signal path and limitations
 
-When no contour exists, audio passes through untouched. With a contour active,
-the only DSP stage is the pitch transposer; there is no EQ, compression,
-saturation, stereo widening, or hidden gain processing. Pitch commands use a
-25 ms ramp to avoid zipper noise.
+When no contour exists or Amount is 0%, audio is sample-identical after the
+fixed latency reported to the host. Keeping that latency constant prevents PDC
+changes while a session is playing. With a contour active, the only DSP stage
+is the pitch transposer; there is no EQ, compression, saturation, stereo
+widening, or hidden gain processing. Pitch commands use a 25 ms ramp and
+effect transitions use a 10 ms crossfade to avoid zipper noise and clicks.
 
 No pitch shifter can promise zero artifacts for every signal. This
 implementation uses Signalsmith Stretch's phase-coherent spectral processing,
@@ -82,4 +84,5 @@ transparent result.
 
 This repository and its unsigned development packages use JUCE's AGPLv3 option.
 Choose a commercial JUCE licence and review all project rights before shipping
-a closed-source product. Signalsmith Stretch is MIT licensed. See `LICENSE`.
+a closed-source product. Signalsmith Stretch is MIT licensed. See `LICENSE`
+for project and third-party notices and `COPYING` for the complete AGPL terms.

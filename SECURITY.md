@@ -16,9 +16,10 @@ Defensive limits:
   between frames when the editor closes.
 - Restored state is capped at 2 MiB and 4,096 validated contour points.
 - Non-finite and out-of-range contour values are discarded or clamped.
-- Unexpected oversized DAW blocks take the latency-matched bypass path rather
-  than accessing outside the prepared buffer.
-- Dependencies are pinned to immutable commit hashes.
+- Unexpected oversized DAW blocks are processed in fixed-size chunks without
+  allocating or accessing outside the prepared scratch buffer.
+- Source dependencies and release workflow actions are pinned to immutable
+  commit hashes.
 
 Audio codecs still process untrusted local files. Only import audio from a
 trusted source, and keep Contour/JUCE updated.
