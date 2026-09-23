@@ -76,6 +76,18 @@ float ContourAudioProcessor::curveValueAt(float position,
 
 void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
+    processBlockInternal(buffer, false);
+}
+
+void ContourAudioProcessor::processBlockBypassed(juce::AudioBuffer<float>& buffer,
+                                                  juce::MidiBuffer&)
+{
+    processBlockInternal(buffer, true);
+}
+
+void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffer,
+                                                  bool forceBypass)
+{
     juce::ScopedNoDenormals noDenormals;
     const int channels = juce::jmin(buffer.getNumChannels(), getTotalNumOutputChannels());
     const int samples = buffer.getNumSamples();
@@ -92,7 +104,7 @@ void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce:
     const auto& curve = curveBuffers[static_cast<size_t>(curveIndex)];
     const float duration = curve.durationSeconds;
     const float amount = state.getRawParameterValue("amount")->load();
-    const bool contourEnabled = curve.pointCount > 0 && duration > 0.0f
+    const bool contourEnabled = ! forceBypass && curve.pointCount > 0 && duration > 0.0f
                              && std::abs(amount) > 1.0e-6f;
     effectMix.setTargetValue(contourEnabled ? 1.0f : 0.0f);
 
@@ -163,13 +175,30 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
 
     std::sort(points.begin(), points.end(),
               [] (const PitchPoint& a, const PitchPoint& b) { return a.position < b.position; });
-    if (points.size() > maximumCurvePoints)
+    constexpr size_t maximumInteriorPoints = maximumCurvePoints - 2;
+    if (points.size() > maximumInteriorPoints)
     {
         std::vector<PitchPoint> reduced;
-        reduced.reserve(maximumCurvePoints);
-        for (size_t i = 0; i < maximumCurvePoints; ++i)
-            reduced.push_back(points[i * (points.size() - 1) / (maximumCurvePoints - 1)]);
+        reduced.reserve(maximumInteriorPoints);
+        for (size_t i = 0; i < maximumInteriorPoints; ++i)
+            reduced.push_back(points[i * (points.size() - 1) / (maximumInteriorPoints - 1)]);
         points = std::move(reduced);
+    }
+
+    if (! points.empty())
+    {
+        const float boundaryCents = 0.5f * (points.front().cents + points.back().cents);
+        const float boundaryConfidence = juce::jmin(points.front().confidence,
+                                                    points.back().confidence);
+        if (points.front().position > 0.0f)
+            points.insert(points.begin(), { 0.0f, boundaryCents, boundaryConfidence });
+        else
+            points.front() = { 0.0f, boundaryCents, boundaryConfidence };
+
+        if (points.back().position < 1.0f)
+            points.push_back({ 1.0f, boundaryCents, boundaryConfidence });
+        else
+            points.back() = { 1.0f, boundaryCents, boundaryConfidence };
     }
 
     if (! std::isfinite(durationSeconds))

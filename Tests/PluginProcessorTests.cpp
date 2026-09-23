@@ -9,54 +9,61 @@ namespace
 {
 bool testLatencyMatchedBypass()
 {
-    ContourAudioProcessor processor;
     constexpr double sampleRate = 48000.0;
     constexpr int preparedBlockSize = 32;
     constexpr int hostBlockSize = 257;
-    processor.prepareToPlay(sampleRate, preparedBlockSize);
-
-    const int latency = processor.getLatencySamples();
-    if (latency <= 0)
+    for (const bool useHostBypass : { false, true })
     {
-        std::cerr << "Processor must report the pitch shifter latency\n";
-        return false;
-    }
+        ContourAudioProcessor processor;
+        processor.prepareToPlay(sampleRate, preparedBlockSize);
 
-    const int totalSamples = latency + hostBlockSize * 2;
-    std::vector<float> output(static_cast<size_t>(totalSamples), 0.0f);
-    juce::MidiBuffer midi;
-    for (int offset = 0; offset < totalSamples; offset += hostBlockSize)
-    {
-        const int blockSamples = juce::jmin(hostBlockSize, totalSamples - offset);
-        juce::AudioBuffer<float> block(2, blockSamples);
-        block.clear();
-        if (offset == 0)
+        const int latency = processor.getLatencySamples();
+        if (latency <= 0)
         {
-            block.setSample(0, 0, 1.0f);
-            block.setSample(1, 0, 1.0f);
+            std::cerr << "Processor must report the pitch shifter latency\n";
+            return false;
         }
-        processor.processBlock(block, midi);
-        for (int sample = 0; sample < blockSamples; ++sample)
+
+        const int totalSamples = latency + hostBlockSize * 2;
+        std::vector<float> output(static_cast<size_t>(totalSamples), 0.0f);
+        juce::MidiBuffer midi;
+        for (int offset = 0; offset < totalSamples; offset += hostBlockSize)
         {
-            if (! std::isfinite(block.getSample(0, sample))
-                || ! std::isfinite(block.getSample(1, sample)))
+            const int blockSamples = juce::jmin(hostBlockSize, totalSamples - offset);
+            juce::AudioBuffer<float> block(2, blockSamples);
+            block.clear();
+            if (offset == 0)
             {
-                std::cerr << "Bypass produced a non-finite sample\n";
+                block.setSample(0, 0, 1.0f);
+                block.setSample(1, 0, 1.0f);
+            }
+            if (useHostBypass)
+                processor.processBlockBypassed(block, midi);
+            else
+                processor.processBlock(block, midi);
+            for (int sample = 0; sample < blockSamples; ++sample)
+            {
+                if (! std::isfinite(block.getSample(0, sample))
+                    || ! std::isfinite(block.getSample(1, sample)))
+                {
+                    std::cerr << "Bypass produced a non-finite sample\n";
+                    return false;
+                }
+                output[static_cast<size_t>(offset + sample)] = block.getSample(0, sample);
+            }
+        }
+
+        for (int sample = 0; sample < totalSamples; ++sample)
+        {
+            const float expected = sample == latency ? 1.0f : 0.0f;
+            if (std::abs(output[static_cast<size_t>(sample)] - expected) > 1.0e-6f)
+            {
+                std::cerr << (useHostBypass ? "Host bypass" : "Empty contour")
+                          << " latency mismatch at sample " << sample
+                          << ", expected " << expected << " and got "
+                          << output[static_cast<size_t>(sample)] << '\n';
                 return false;
             }
-            output[static_cast<size_t>(offset + sample)] = block.getSample(0, sample);
-        }
-    }
-
-    for (int sample = 0; sample < totalSamples; ++sample)
-    {
-        const float expected = sample == latency ? 1.0f : 0.0f;
-        if (std::abs(output[static_cast<size_t>(sample)] - expected) > 1.0e-6f)
-        {
-            std::cerr << "Bypass latency mismatch at sample " << sample
-                      << ", expected " << expected << " and got "
-                      << output[static_cast<size_t>(sample)] << '\n';
-            return false;
         }
     }
     return true;
@@ -70,6 +77,13 @@ bool testContourWithOversizedBlocks()
     constexpr int hostBlockSize = 509;
     processor.prepareToPlay(sampleRate, preparedBlockSize);
     processor.setContour({ { 0.0f, -35.0f, 1.0f }, { 1.0f, 35.0f, 1.0f } }, 1.0f);
+    const auto closedCurve = processor.getContour();
+    if (closedCurve.size() < 2
+        || std::abs(closedCurve.front().cents - closedCurve.back().cents) > 1.0e-6f)
+    {
+        std::cerr << "Contour loop endpoints must be continuous\n";
+        return false;
+    }
 
     const int totalSamples = processor.getLatencySamples() + 4096;
     double phase = 0.0;
