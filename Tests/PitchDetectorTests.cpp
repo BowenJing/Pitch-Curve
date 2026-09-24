@@ -47,7 +47,7 @@ int main()
 
     juce::AudioBuffer<float> antiPhase(2, audio.getNumSamples());
     antiPhase.copyFrom(0, 0, audio, 0, 0, audio.getNumSamples());
-    antiPhase.copyFrom(1, 0, audio, 0, 0, audio.getNumSamples(), -1.0f);
+    antiPhase.copyFrom(1, 0, audio.getReadPointer(0), audio.getNumSamples(), -1.0f);
     const auto antiPhaseResult = PitchDetector::analyse(antiPhase, sampleRate);
     if (antiPhaseResult.points.size() < 100
         || std::abs(antiPhaseResult.referenceHz - 220.0f) > 3.0f)
