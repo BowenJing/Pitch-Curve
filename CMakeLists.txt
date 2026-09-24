@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(Contour
-    VERSION 0.6.1
+    VERSION 0.7.0
     DESCRIPTION "Learn and transfer expressive pitch contours"
     LANGUAGES C CXX)
 
@@ -42,11 +42,11 @@ if(CMAKE_CROSSCOMPILING)
 endif()
 
 juce_add_plugin(Contour
-    COMPANY_NAME "Sound Tools"
-    BUNDLE_ID "tools.sound.pitchtransform"
+    COMPANY_NAME "Circus Audio"
+    BUNDLE_ID "audio.circus.pitchcurve"
     PLUGIN_MANUFACTURER_CODE Cntr
     PLUGIN_CODE Ct01
-    PRODUCT_NAME "PitchTransform"
+    PRODUCT_NAME "Pitch Curve"
     FORMATS ${CONTOUR_FORMATS}
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
@@ -67,14 +67,14 @@ if(CMAKE_CROSSCOMPILING AND WIN32)
     endif()
 
     set(CONTOUR_VST3_MANIFEST
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/PitchTransform.vst3/Contents/Resources/moduleinfo.json")
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Pitch Curve.vst3/Contents/Resources/moduleinfo.json")
     add_dependencies(Contour_VST3 Contour_vst3_helper)
     add_custom_command(TARGET Contour_VST3 POST_BUILD
         COMMAND "${CMAKE_COMMAND}"
             "-DHELPER=$<TARGET_FILE:Contour_vst3_helper>"
             "-DWINE=${WINE_EXECUTABLE}"
             "-DOUTPUT=${CONTOUR_VST3_MANIFEST}"
-            "-DEXPECTED_NAME=PitchTransform"
+            "-DEXPECTED_NAME=Pitch Curve"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateVST3Manifest.cmake"
         BYPRODUCTS "${CONTOUR_VST3_MANIFEST}"
         COMMENT "Generating Windows VST3 moduleinfo.json with Wine"
@@ -125,26 +125,26 @@ endif()
 
 if(APPLE)
     install(DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/PitchTransform.vst3"
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Pitch Curve.vst3"
         DESTINATION "Library/Audio/Plug-Ins/VST3" COMPONENT ContourRuntime)
     install(DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/AU/PitchTransform.component"
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/AU/Pitch Curve.component"
         DESTINATION "Library/Audio/Plug-Ins/Components" COMPONENT ContourRuntime)
     install(DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/Standalone/PitchTransform.app"
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/Standalone/Pitch Curve.app"
         DESTINATION "Applications" COMPONENT ContourRuntime)
 elseif(WIN32)
     install(DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/PitchTransform.vst3"
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Pitch Curve.vst3"
         DESTINATION "VST3" COMPONENT ContourRuntime)
     install(TARGETS Contour_Standalone RUNTIME DESTINATION "Standalone"
         COMPONENT ContourRuntime)
 else()
     install(DIRECTORY
-        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/PitchTransform.vst3"
+        "${CMAKE_CURRENT_BINARY_DIR}/Contour_artefacts/$<CONFIG>/VST3/Pitch Curve.vst3"
         DESTINATION "lib/vst3" COMPONENT ContourRuntime)
     install(PROGRAMS "$<TARGET_FILE:Contour_Standalone>"
-        DESTINATION "bin" RENAME "pitchtransform" COMPONENT ContourRuntime)
+        DESTINATION "bin" RENAME "pitchcurve" COMPONENT ContourRuntime)
 endif()
 
 include(CTest)
@@ -182,7 +182,7 @@ if(BUILD_TESTING)
         JUCE_WEB_BROWSER=0
         JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_DISPLAY_SPLASH_SCREEN=0
-        JucePlugin_Name="PitchTransform")
+        JucePlugin_Name="Pitch Curve")
     target_link_libraries(ContourProcessorTests PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
@@ -193,8 +193,8 @@ if(BUILD_TESTING)
     add_test(NAME ContourProcessorSafety COMMAND ContourProcessorTests)
 endif()
 
-set(CPACK_PACKAGE_NAME "PitchTransform")
-set(CPACK_PACKAGE_VENDOR "Sound Tools")
+set(CPACK_PACKAGE_NAME "Pitch Curve")
+set(CPACK_PACKAGE_VENDOR "Circus Audio")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Expressive pitch-contour transfer plug-in")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
@@ -207,7 +207,7 @@ set(CPACK_INSTALL_CMAKE_PROJECTS
 if(APPLE)
     set(CPACK_GENERATOR "productbuild")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/")
-    set(CPACK_PRODUCTBUILD_IDENTIFIER "tools.sound.pitchtransform.installer")
+    set(CPACK_PRODUCTBUILD_IDENTIFIER "audio.circus.pitchcurve.installer")
 elseif(WIN32)
     set(CPACK_GENERATOR "NSIS;ZIP")
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(ARM64|arm64|aarch64)$")
@@ -216,36 +216,41 @@ elseif(WIN32)
         set(CONTOUR_WINDOWS_ARCH "x64")
     endif()
     set(CPACK_PACKAGE_FILE_NAME
-        "PitchTransform-${PROJECT_VERSION}-Windows-${CONTOUR_WINDOWS_ARCH}")
-    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Sound Tools\\\\PitchTransform")
+        "Pitch-Curve-${PROJECT_VERSION}-Windows-${CONTOUR_WINDOWS_ARCH}")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "Circus Audio\\\\Pitch Curve")
     set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "Contour")
-    set(CPACK_NSIS_DISPLAY_NAME "PitchTransform ${PROJECT_VERSION}")
-    set(CPACK_NSIS_PACKAGE_NAME "PitchTransform")
+    set(CPACK_NSIS_DISPLAY_NAME "Pitch Curve ${PROJECT_VERSION}")
+    set(CPACK_NSIS_PACKAGE_NAME "Pitch Curve")
     set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
     set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [=[
 RMDir /r \"$PROGRAMFILES64\\Contour\"
 RMDir /r \"$SMPROGRAMS\\Contour\"
 DeleteRegKey SHCTX \"Software\\Contour Audio\\Contour\"
+RMDir /r \"$PROGRAMFILES64\\Sound Tools\\PitchTransform\"
+RMDir /r \"$SMPROGRAMS\\PitchTransform\"
+DeleteRegKey SHCTX \"Software\\Sound Tools\\Contour\"
 RMDir /r \"$COMMONFILES64\\VST3\\Contour.vst3\"
-SetOutPath \"$COMMONFILES64\\VST3\\PitchTransform.vst3\"
+RMDir /r \"$COMMONFILES64\\VST3\\PitchTransform.vst3\"
+SetOutPath \"$COMMONFILES64\\VST3\\Pitch Curve.vst3\"
 ClearErrors
-File /r \"\${INST_DIR}\\VST3\\PitchTransform.vst3\\*.*\"
+File /r \"\${INST_DIR}\\VST3\\Pitch Curve.vst3\\*.*\"
 IfErrors vst3InstallFailed vst3InstallDone
 vst3InstallFailed:
-  MessageBox MB_ICONSTOP \"PitchTransform VST3 could not be installed.\"
+  MessageBox MB_ICONSTOP \"Pitch Curve VST3 could not be installed.\"
   Abort
 vst3InstallDone:
 SetOutPath \"$INSTDIR\"
 ]=])
     set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS [=[
+RMDir /r \"$COMMONFILES64\\VST3\\Pitch Curve.vst3\"
 RMDir /r \"$COMMONFILES64\\VST3\\PitchTransform.vst3\"
 RMDir /r \"$COMMONFILES64\\VST3\\Contour.vst3\"
 ]=])
 else()
     set(CPACK_GENERATOR "DEB;TGZ")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
-    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Sound Tools")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Circus Audio")
     set(CPACK_DEBIAN_PACKAGE_SECTION "sound")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 endif()

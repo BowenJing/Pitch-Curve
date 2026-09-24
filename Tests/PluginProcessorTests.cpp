@@ -139,6 +139,8 @@ bool testStateRoundTripAndBounds()
     source.setContour({ { 0.2f, -20.0f, 0.8f }, { 0.8f, 30.0f, 0.9f } }, 3.5f);
     if (auto* amount = source.parameters().getParameter("amount"))
         amount->setValueNotifyingHost(amount->convertTo0to1(1.5f));
+    if (auto* smooth = source.parameters().getParameter("smooth"))
+        smooth->setValueNotifyingHost(smooth->convertTo0to1(10.0f));
 
     juce::MemoryBlock state;
     source.getStateInformation(state);
@@ -149,7 +151,9 @@ bool testStateRoundTripAndBounds()
         || std::abs(restoredCurve.front().position) > 1.0e-6f
         || std::abs(restoredCurve.back().position - 1.0f) > 1.0e-6f
         || std::abs(restoredCurve.front().cents - restoredCurve.back().cents) > 1.0e-6f
-        || std::abs(restored.getContourDuration() - 3.5f) > 1.0e-6f)
+        || std::abs(restored.getContourDuration() - 3.5f) > 1.0e-6f
+        || std::abs(restored.parameters().getRawParameterValue("smooth")->load() - 10.0f)
+               > 1.0e-6f)
     {
         std::cerr << "Contour state did not round-trip safely\n";
         return false;
@@ -170,10 +174,10 @@ bool testStateRoundTripAndBounds()
                          { 0.75f, 5000.0f, 1.0f } }, 1.0f);
     const auto boundedCurve = bounded.getContour();
     if (boundedCurve.size() != 4
-        || std::abs(boundedCurve[1].cents + 1200.0f) > 1.0e-6f
-        || std::abs(boundedCurve[2].cents - 1200.0f) > 1.0e-6f)
+        || std::abs(boundedCurve[1].cents + 600.0f) > 1.0e-6f
+        || std::abs(boundedCurve[2].cents - 600.0f) > 1.0e-6f)
     {
-        std::cerr << "Editable pitch range must be clamped to +/-12 semitones\n";
+        std::cerr << "Editable base pitch range must be clamped to +/-6 semitones\n";
         return false;
     }
     return true;

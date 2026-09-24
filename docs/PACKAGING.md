@@ -1,7 +1,7 @@
 # Building installers
 
 There is no single installer format shared by macOS, Windows, and Linux.
-PitchTransform produces a native package for each platform.
+Pitch Curve produces a native package for each platform.
 
 ## Linux
 
@@ -13,7 +13,7 @@ cpack --config build/CPackConfig.cmake -G DEB
 ```
 
 The `.deb` installs the VST3 bundle to `/usr/lib/vst3` and the standalone
-application to `/usr/bin/pitchtransform`. A `.tar.gz` can be produced with `-G TGZ`.
+application to `/usr/bin/pitchcurve`. A `.tar.gz` can be produced with `-G TGZ`.
 
 ## macOS Universal
 
@@ -40,7 +40,7 @@ cpack --config build/CPackConfig.cmake -C Release -G NSIS
 ```
 
 Replace `x64` with `ARM64` for a native Windows-on-ARM package. NSIS is
-required. The installer copies `PitchTransform.vst3` into the system Common Files VST3
+required. The installer copies `Pitch Curve.vst3` into the system Common Files VST3
 directory. Sign binaries and the final installer with Authenticode before
 public release.
 

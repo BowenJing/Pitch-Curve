@@ -55,6 +55,7 @@ private:
     };
 
     float curveValueAt(float position, const CurveData&) const;
+    float smoothedCurveValueAt(float position, const CurveData&, int smooth) const;
     void processBlockInternal(juce::AudioBuffer<float>&, bool forceBypass);
 
     juce::AudioProcessorValueTreeState state;

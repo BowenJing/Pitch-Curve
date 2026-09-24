@@ -214,7 +214,7 @@ PitchAnalysis PitchDetector::analyse(const juce::AudioBuffer<float>& audio,
 
         result.points.push_back({
             detections[i].position,
-            juce::jlimit(-1200.0f, 1200.0f, median(std::move(neighbourhood))),
+            juce::jlimit(-600.0f, 600.0f, median(std::move(neighbourhood))),
             detections[i].confidence
         });
     }

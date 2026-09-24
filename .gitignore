@@ -16,6 +16,12 @@
 /PitchTransform-*.tar.gz.sha256
 /PitchTransform-*-Windows-*.exe
 /PitchTransform-*-Windows-*.exe.sha256
+/Pitch-Curve-*.deb
+/Pitch-Curve-*.deb.sha256
+/Pitch-Curve-*.tar.gz
+/Pitch-Curve-*.tar.gz.sha256
+/Pitch-Curve-*-Windows-*.exe
+/Pitch-Curve-*-Windows-*.exe.sha256
 /.cache/
 *.jucer
 .DS_Store

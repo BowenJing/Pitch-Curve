@@ -1,17 +1,17 @@
-# PitchTransform 0.6.1 用户说明书
+# Pitch Curve 0.7.0 用户说明书
 
-适用版本：PitchTransform 0.6.1
+适用版本：Pitch Curve 0.7.0
 文档语言：简体中文
 
 ## 1. 产品简介
 
-PitchTransform 是一款用于提取和迁移细微音高变化的音频效果插件。它可以：
+Pitch Curve 是一款用于提取和迁移细微音高变化的音频效果插件。它可以：
 
 1. 从一段参考音频中学习音高变化曲线。
 2. 将学习到的曲线施加到当前 DAW 轨道中的声音。
 3. 允许用户直接用鼠标绘制或修改音高变化曲线。
 
-PitchTransform 提取的是相对于参考音频中位音高的变化量，而不是参考音频的绝对音高。因此，目标声音会保留自身音区，只继承参考音频中的颤音、滑音和其他细微音高运动。
+Pitch Curve 提取的是相对于参考音频中位音高的变化量，而不是参考音频的绝对音高。因此，目标声音会保留自身音区，只继承参考音频中的颤音、滑音和其他细微音高运动。
 
 ## 2. 当前支持的平台和格式
 
@@ -41,23 +41,23 @@ PitchTransform 提取的是相对于参考音频中位音高的变化量，而�
 安装或升级前，请关闭：
 
 - 所有 DAW。
-- PitchTransform 独立运行程序。
+- Pitch Curve 独立运行程序。
 - 插件扫描器。
-- 任何正在使用 PitchTransform VST3 的音频程序。
+- 任何正在使用 Pitch Curve VST3 的音频程序。
 
 Windows 在程序或 DAW 已加载插件时会锁定对应文件。如果没有关闭这些程序，安装器可能提示“无法打开要写入的文件”。
 
 ### 3.2 安装步骤
 
-1. 运行 `PitchTransform-0.6.1-Windows-x64.exe`。
+1. 运行 `Pitch-Curve-0.7.0-Windows-x64.exe`。
 2. 根据 Windows 提示授予管理员权限。
 3. 完成安装。
 4. 重新打开 DAW，并执行一次插件重新扫描。
 
 默认安装位置：
 
-- VST3：`C:\Program Files\Common Files\VST3\PitchTransform.vst3`
-- 独立程序：`C:\Program Files\Sound Tools\PitchTransform\Standalone\PitchTransform.exe`
+- VST3：`C:\Program Files\Common Files\VST3\Pitch Curve.vst3`
+- 独立程序：`C:\Program Files\Circus Audio\Pitch Curve\Standalone\Pitch Curve.exe`
 
 ### 3.3 Windows 安全提示
 
@@ -89,9 +89,9 @@ Windows 在程序或 DAW 已加载插件时会锁定对应文件。如果没有�
 - 横轴：参考音频时间。
 - 纵轴：音高变化，单位为 semitone（半音，界面缩写为 `st`）。
 - 中心线：0 半音。
-- Amount 为 0% 时，纵轴显示 ±2 半音作为可编辑视觉参考，实际处理量仍为零。
-- Amount 为 100% 时，纵轴显示 ±12 半音。
-- Amount 为 200% 时，纵轴显示并限制在最大 ±24 半音。
+- Amount 为 0% 时，纵轴顶部和底部都显示 0 半音，曲线变为灰色，实际处理量为零。
+- Amount 为 100% 时，纵轴显示 ±6 半音。
+- Amount 为 200% 时，纵轴显示并限制在最大 ±12 半音。
 - 其他 Amount 数值下，左侧刻度会随旋钮连续变化。
 - 绿色竖线：当前播放位置。
 
@@ -119,7 +119,15 @@ Windows 在程序或 DAW 已加载插件时会锁定对应文件。如果没有�
 
 双击旋钮可恢复为 100%。
 
-### 4.5 Clear Curve
+### 4.5 Smooth
+
+`SMOOTH` 是 0–10 的整数步进旋钮：
+
+- `0`：保留较明显的直线段和硬拐角。
+- 数值越大：声音处理和界面曲线都会逐渐圆润。
+- `10`：平滑程度最高，同时保留原始曲线的主要起伏特征。
+
+### 4.6 Clear Curve
 
 点击 `CLEAR CURVE` 可删除当前曲线。  
 也可以双击曲线编辑区域清空曲线。
@@ -128,7 +136,7 @@ Windows 在程序或 DAW 已加载插件时会锁定对应文件。如果没有�
 
 ### 5.1 从参考音频学习
 
-1. 在 DAW 中，将 PitchTransform 插入需要处理的目标音频轨道。
+1. 在 DAW 中，将 Pitch Curve 插入需要处理的目标音频轨道。
 2. 将一段参考音频拖入 Learn 区域，或点击 `DROP AUDIO OR BROWSE`。
 3. 确认文件名和波形显示正确。
 4. 点击 `LEARN CONTOUR`。
@@ -159,7 +167,7 @@ Windows 在程序或 DAW 已加载插件时会锁定对应文件。如果没有�
 
 ## 6. 音高学习原理
 
-PitchTransform 使用面向单声部素材的音高检测：
+Pitch Curve 使用面向单声部素材的音高检测：
 
 1. 将输入转换为单声道分析信号。
 2. 检测每个时间帧的基频和置信度。
@@ -188,7 +196,7 @@ PitchTransform 使用面向单声部素材的音高检测：
 
 ### 8.1 延迟补偿
 
-PitchTransform 使用高质量频谱移调算法，因此会产生固定处理延迟。插件会向 DAW 正确报告完整延迟。
+Pitch Curve 使用高质量频谱移调算法，因此会产生固定处理延迟。插件会向 DAW 正确报告完整延迟。
 
 支持插件延迟补偿（PDC）的 DAW 会自动对齐轨道。即使没有曲线或 Amount 为 0%，插件也保持相同延迟，避免播放过程中切换曲线时改变 DAW 的补偿状态。
 
@@ -226,7 +234,7 @@ PitchTransform 使用高质量频谱移调算法，因此会产生固定处理�
 处理方法：
 
 1. 关闭 DAW。
-2. 关闭 PitchTransform 独立程序。
+2. 关闭 Pitch Curve 独立程序。
 3. 在任务管理器中关闭 DAW 的插件扫描器或后台进程。
 4. 重新运行安装器。
 5. 如果仍然失败，重启 Windows 后再安装。
@@ -234,7 +242,7 @@ PitchTransform 使用高质量频谱移调算法，因此会产生固定处理�
 ### DAW 找不到插件
 
 1. 确认 VST3 文件位于：
-   `C:\Program Files\Common Files\VST3\PitchTransform.vst3`
+   `C:\Program Files\Common Files\VST3\Pitch Curve.vst3`
 2. 在 DAW 中执行完整插件重扫。
 3. 确认 DAW 为 64 位并支持 VST3。
 4. 检查 DAW 的插件黑名单。
@@ -274,17 +282,17 @@ PitchTransform 使用高质量频谱移调算法，因此会产生固定处理�
 
 ## 11. 卸载
 
-1. 关闭 DAW 和 PitchTransform。
+1. 关闭 DAW 和 Pitch Curve。
 2. 打开 Windows“设置”。
 3. 进入“应用”或“已安装的应用”。
-4. 找到 `PitchTransform 0.6.1`。
+4. 找到 `Pitch Curve 0.7.0`。
 5. 点击“卸载”。
 
 卸载器会删除独立程序、VST3 和卸载注册信息。
 
 ## 12. 隐私与安全
 
-PitchTransform：
+Pitch Curve：
 
 - 不联网。
 - 不上传音频。
@@ -299,19 +307,20 @@ PitchTransform：
 
 - 音高学习主要面向单声部素材。
 - 不支持从和弦中分离多个独立音高曲线。
-- 曲线基础编辑范围为 ±12 半音，Amount 200% 时最大输出为 ±24 半音。
+- 曲线基础编辑范围为 ±6 半音，Amount 200% 时最大输出为 ±12 半音。
 - 当前提供的 Windows 安装包为 x64。
 - 开发安装包尚未进行 Authenticode 签名。
 - 尚不能保证所有 DAW、声卡、采样率和音频素材都没有算法伪影。
 
 ## 14. 版本要点
 
-PitchTransform 0.6.1 包含：
+Pitch Curve 0.7.0 包含：
 
 - 修复首次播放时播放线可能从曲线后段开始的问题。
 - 左侧刻度改为随 Amount 变化的半音单位。
-- 最大音高处理范围扩展到 ±24 半音。
-- 插件及安装包更名为 PitchTransform，开发商更新为 Sound Tools。
+- 最大音高处理范围调整为 ±12 半音。
+- 新增 0–10 步进式 Smooth 曲线平滑控制。
+- 插件及安装包更名为 Pitch Curve，开发商更新为 Circus Audio。
 - 更舒适的深灰蓝与柔和薄荷绿配色。
 - 统一的时间与 Amount 旋钮、数值框、字体、间距和强调色。
 - 30 FPS 的秒数/帧数曲线时长控制。
@@ -330,5 +339,5 @@ PitchTransform 0.6.1 包含：
 
 ---
 
-Sound Tools
+Circus Audio
 项目许可及第三方许可信息见仓库中的 `LICENSE` 与 `COPYING`。

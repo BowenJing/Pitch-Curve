@@ -14,6 +14,16 @@ public:
     juce::Font getTextButtonFont(juce::TextButton&, int) override;
 };
 
+class NumericTextEditor final : public juce::TextEditor
+{
+public:
+    void mouseDown(const juce::MouseEvent& event) override
+    {
+        juce::TextEditor::mouseDown(event);
+        selectAll();
+    }
+};
+
 class CurveEditor final : public juce::Component,
                           private juce::Timer
 {
@@ -33,6 +43,7 @@ private:
     float centsFromY(float) const;
     float yFromCents(float) const;
     float displayRangeSemitones() const;
+    float displayCentsAt(float) const;
 
     ContourAudioProcessor& processor;
     std::vector<PitchPoint> editablePoints;
@@ -80,6 +91,8 @@ private:
     void updateDurationTimecode();
     void applyAmountText();
     void updateAmountText();
+    void applySmoothText();
+    void updateSmoothText();
 
     ContourAudioProcessor& processor;
     ContourLookAndFeel lookAndFeel;
@@ -94,15 +107,19 @@ private:
     juce::Label secondsLabel;
     juce::Label framesLabel;
     juce::Label amountLabel;
-    juce::TextEditor secondsEditor;
-    juce::TextEditor framesEditor;
-    juce::TextEditor amountEditor;
+    juce::Label smoothLabel;
+    NumericTextEditor secondsEditor;
+    NumericTextEditor framesEditor;
+    NumericTextEditor amountEditor;
+    NumericTextEditor smoothEditor;
     juce::Slider timeKnob;
     juce::Slider amount;
+    juce::Slider smooth;
     juce::File selectedFile;
     juce::File analysisFile;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> amountAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> smoothAttachment;
     std::atomic<bool> analysing { false };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ContourAudioProcessorEditor)

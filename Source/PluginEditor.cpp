@@ -85,21 +85,61 @@ float CurveEditor::centsFromY(float y) const
 {
     const auto bounds = graphBounds();
     return juce::jmap(juce::jlimit(bounds.getY(), bounds.getBottom(), y),
-                      bounds.getBottom(), bounds.getY(), -1200.0f, 1200.0f);
+                      bounds.getBottom(), bounds.getY(), -600.0f, 600.0f);
 }
 
 float CurveEditor::yFromCents(float cents) const
 {
     const auto bounds = graphBounds();
-    return juce::jmap(juce::jlimit(-1200.0f, 1200.0f, cents),
-                      -1200.0f, 1200.0f, bounds.getBottom(), bounds.getY());
+    return juce::jmap(juce::jlimit(-600.0f, 600.0f, cents),
+                      -600.0f, 600.0f, bounds.getBottom(), bounds.getY());
 }
 
 float CurveEditor::displayRangeSemitones() const
 {
-    constexpr float minimumVisualAmount = 1.0f / 6.0f;
     const float amount = processor.parameters().getRawParameterValue("amount")->load();
-    return 12.0f * juce::jmax(minimumVisualAmount, amount);
+    return 6.0f * amount;
+}
+
+float CurveEditor::displayCentsAt(float position) const
+{
+    if (editablePoints.empty())
+        return 0.0f;
+
+    const auto valueAt = [this] (float samplePosition)
+    {
+        samplePosition -= std::floor(samplePosition);
+        const auto upper = std::lower_bound(
+            editablePoints.begin(), editablePoints.end(), samplePosition,
+            [] (const PitchPoint& point, float value) { return point.position < value; });
+        if (upper == editablePoints.begin())
+            return upper->cents;
+        if (upper == editablePoints.end())
+            return editablePoints.back().cents;
+        const auto lower = upper - 1;
+        const float span = upper->position - lower->position;
+        const float proportion = span > 0.0f
+            ? (samplePosition - lower->position) / span
+            : 0.0f;
+        return juce::jmap(proportion, lower->cents, upper->cents);
+    };
+
+    const int smooth = juce::roundToInt(
+        processor.parameters().getRawParameterValue("smooth")->load());
+    if (smooth <= 0 || editablePoints.size() < 3)
+        return valueAt(position);
+
+    const float radius = 0.004f * static_cast<float>(smooth);
+    float weightedValue = 0.0f;
+    float totalWeight = 0.0f;
+    for (int offset = -smooth; offset <= smooth; ++offset)
+    {
+        const float proportion = static_cast<float>(offset) / static_cast<float>(smooth);
+        const float weight = static_cast<float>(smooth + 1 - std::abs(offset));
+        weightedValue += valueAt(position + proportion * radius) * weight;
+        totalWeight += weight;
+    }
+    return totalWeight > 0.0f ? weightedValue / totalWeight : valueAt(position);
 }
 
 void CurveEditor::paint(juce::Graphics& g)
@@ -124,7 +164,8 @@ void CurveEditor::paint(juce::Graphics& g)
         g.setColour(tick == 0 ? Palette::muted.withAlpha(0.45f)
                               : Palette::muted.withAlpha(0.16f));
         g.drawHorizontalLine(juce::roundToInt(y), bounds.getX(), bounds.getRight());
-        if (tick != 0)
+        if (tick != 0
+            && (semitoneRange > 1.0e-6f || std::abs(tick) == 2))
         {
             const float rounded = std::round(semitones);
             const auto value = std::abs(semitones - rounded) < 0.01f
@@ -149,26 +190,50 @@ void CurveEditor::paint(juce::Graphics& g)
     else
     {
         juce::Path curve;
-        curve.startNewSubPath(bounds.getX() + editablePoints.front().position * bounds.getWidth(),
-                              yFromCents(editablePoints.front().cents));
-        for (size_t i = 1; i < editablePoints.size(); ++i)
-            curve.lineTo(bounds.getX() + editablePoints[i].position * bounds.getWidth(),
-                         yFromCents(editablePoints[i].cents));
+        const int smooth = juce::roundToInt(
+            processor.parameters().getRawParameterValue("smooth")->load());
+        if (smooth == 0)
+        {
+            curve.startNewSubPath(
+                bounds.getX() + editablePoints.front().position * bounds.getWidth(),
+                yFromCents(editablePoints.front().cents));
+            for (size_t i = 1; i < editablePoints.size(); ++i)
+                curve.lineTo(bounds.getX() + editablePoints[i].position * bounds.getWidth(),
+                             yFromCents(editablePoints[i].cents));
+        }
+        else
+        {
+            constexpr int displaySamples = 256;
+            for (int i = 0; i < displaySamples; ++i)
+            {
+                const float position = static_cast<float>(i) / (displaySamples - 1);
+                const auto point = juce::Point<float>(
+                    bounds.getX() + position * bounds.getWidth(),
+                    yFromCents(displayCentsAt(position)));
+                if (i == 0)
+                    curve.startNewSubPath(point);
+                else
+                    curve.lineTo(point);
+            }
+        }
 
         juce::Path fill = curve;
         fill.lineTo(bounds.getRight(), yFromCents(0.0f));
         fill.lineTo(bounds.getX(), yFromCents(0.0f));
         fill.closeSubPath();
-        juce::ColourGradient gradient(Palette::accent.withAlpha(0.16f),
+        const bool amountIsZero =
+            processor.parameters().getRawParameterValue("amount")->load() <= 1.0e-6f;
+        const auto curveColour = amountIsZero ? Palette::muted : Palette::accent;
+        juce::ColourGradient gradient(curveColour.withAlpha(0.16f),
                                       bounds.getCentreX(), bounds.getY(),
-                                      Palette::accent.withAlpha(0.01f),
+                                      curveColour.withAlpha(0.01f),
                                       bounds.getCentreX(), bounds.getBottom(), false);
         g.setGradientFill(gradient);
         g.fillPath(fill);
-        g.setColour(Palette::accent.withAlpha(0.16f));
+        g.setColour(curveColour.withAlpha(0.16f));
         g.strokePath(curve, juce::PathStrokeType(7.0f, juce::PathStrokeType::curved,
                                                  juce::PathStrokeType::rounded));
-        g.setColour(Palette::accent);
+        g.setColour(curveColour);
         g.strokePath(curve, juce::PathStrokeType(2.0f, juce::PathStrokeType::curved,
                                                  juce::PathStrokeType::rounded));
     }
@@ -349,11 +414,13 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
       processor(owner), curveEditor(owner)
 {
     setLookAndFeel(&lookAndFeel);
+    setWantsKeyboardFocus(true);
+    setMouseClickGrabsKeyboardFocus(true);
     setResizable(true, true);
-    setResizeLimits(720, 500, 1200, 850);
-    setSize(900, 620);
+    setResizeLimits(720, 620, 1200, 900);
+    setSize(900, 700);
 
-    title.setText("PITCHTRANSFORM", juce::dontSendNotification);
+    title.setText("PITCH CURVE", juce::dontSendNotification);
     title.setFont(juce::Font(juce::FontOptions(24.0f, juce::Font::bold)));
     status.setText("Draw a curve, or learn one from audio", juce::dontSendNotification);
     status.setColour(juce::Label::textColourId, Palette::muted);
@@ -366,17 +433,21 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     secondsLabel.setText("SECOND", juce::dontSendNotification);
     framesLabel.setText("FRAME", juce::dontSendNotification);
     amountLabel.setText("AMOUNT", juce::dontSendNotification);
-    for (auto* label : { &secondsLabel, &framesLabel, &amountLabel })
+    smoothLabel.setText("SMOOTH", juce::dontSendNotification);
+    for (auto* label : { &title, &status, &fileName, &secondsLabel, &framesLabel,
+                         &amountLabel, &smoothLabel })
+        label->setInterceptsMouseClicks(false, false);
+    for (auto* label : { &secondsLabel, &framesLabel, &amountLabel, &smoothLabel })
     {
         label->setColour(juce::Label::textColourId, Palette::muted);
         label->setJustificationType(juce::Justification::centred);
         label->setFont(juce::Font(juce::FontOptions(11.0f, juce::Font::bold)));
     }
 
-    for (auto* editor : { &secondsEditor, &framesEditor, &amountEditor })
+    for (auto* editor : { &secondsEditor, &framesEditor, &amountEditor, &smoothEditor })
     {
         editor->setJustification(juce::Justification::centred);
-        editor->setSelectAllWhenFocused(false);
+        editor->setSelectAllWhenFocused(true);
         editor->setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
         editor->setColour(juce::TextEditor::backgroundColourId, Palette::panelLight);
         editor->setColour(juce::TextEditor::textColourId, Palette::text);
@@ -392,11 +463,15 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     amountEditor.setInputRestrictions(3, "0123456789");
     amountEditor.onReturnKey = [this] { applyAmountText(); };
     amountEditor.onFocusLost = [this] { applyAmountText(); };
+    smoothEditor.setInputRestrictions(2, "0123456789");
+    smoothEditor.onReturnKey = [this] { applySmoothText(); };
+    smoothEditor.onFocusLost = [this] { applySmoothText(); };
 
     timeKnob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     timeKnob.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     timeKnob.setRange(1.0, 600.0 * 30.0, 1.0);
     timeKnob.setSkewFactorFromMidPoint(300.0);
+    timeKnob.setMouseClickGrabsKeyboardFocus(true);
     timeKnob.onValueChange = [this]
     {
         const int totalFrames = juce::roundToInt(timeKnob.getValue());
@@ -420,15 +495,29 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     amount.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     amount.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     amount.setDoubleClickReturnValue(true, 1.0);
+    amount.setMouseClickGrabsKeyboardFocus(true);
     amount.onValueChange = [this] { updateAmountText(); };
     amountAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processor.parameters(), "amount", amount);
     updateAmountText();
 
+    smooth.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    smooth.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    smooth.setRange(0.0, 10.0, 1.0);
+    smooth.setMouseClickGrabsKeyboardFocus(true);
+    smooth.onValueChange = [this] { updateSmoothText(); };
+    smoothAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        processor.parameters(), "smooth", smooth);
+    updateSmoothText();
+
+    for (auto* button : { &fileButton, &learnButton, &clearButton })
+        button->setMouseClickGrabsKeyboardFocus(true);
+
     for (auto* component : std::initializer_list<juce::Component*> {
              &title, &status, &waveform, &fileName, &fileButton, &learnButton,
              &clearButton, &secondsLabel, &framesLabel, &secondsEditor, &framesEditor,
-             &amountEditor, &timeKnob, &amountLabel, &amount, &curveEditor })
+             &amountEditor, &smoothEditor, &timeKnob, &amountLabel, &amount,
+             &smoothLabel, &smooth, &curveEditor })
         addAndMakeVisible(component);
 }
 
@@ -481,8 +570,10 @@ void ContourAudioProcessorEditor::resized()
     const int clearHeight = 38;
     clearButton.setBounds(control.removeFromBottom(clearHeight));
     control.removeFromBottom(8);
-    auto timeSection = control.removeFromTop(control.getHeight() / 2);
-    auto amountSection = control;
+    const int sectionHeight = control.getHeight() / 3;
+    auto timeSection = control.removeFromTop(sectionHeight);
+    auto amountSection = control.removeFromTop(sectionHeight);
+    auto smoothSection = control;
 
     const int fieldWidth = 54;
     const int fieldGap = 8;
@@ -494,7 +585,8 @@ void ContourAudioProcessorEditor::resized()
         54, 90,
         juce::jmin(controlWidth,
                    juce::jmin(timeSection.getHeight() - valueBlockHeight,
-                              amountSection.getHeight() - valueBlockHeight)));
+                              juce::jmin(amountSection.getHeight() - valueBlockHeight,
+                                         smoothSection.getHeight() - valueBlockHeight))));
 
     const auto layoutControlGroup = [ringSize, valueBlockHeight, knobToFieldGap,
                                      fieldWidth, fieldHeight, labelHeight]
@@ -528,6 +620,7 @@ void ContourAudioProcessorEditor::resized()
                           fieldWidth, labelHeight);
 
     layoutControlGroup(amountSection, amount, amountEditor, amountLabel);
+    layoutControlGroup(smoothSection, smooth, smoothEditor, smoothLabel);
 }
 
 bool ContourAudioProcessorEditor::isInterestedInFileDrag(const juce::StringArray& files)
@@ -596,6 +689,20 @@ void ContourAudioProcessorEditor::updateAmountText()
     const auto text = juce::String(juce::roundToInt(amount.getValue() * 100.0));
     if (amountEditor.getText() != text)
         amountEditor.setText(text, false);
+}
+
+void ContourAudioProcessorEditor::applySmoothText()
+{
+    const int value = juce::jlimit(0, 10, smoothEditor.getText().getIntValue());
+    smooth.setValue(value, juce::sendNotificationSync);
+    updateSmoothText();
+}
+
+void ContourAudioProcessorEditor::updateSmoothText()
+{
+    const auto text = juce::String(juce::roundToInt(smooth.getValue()));
+    if (smoothEditor.getText() != text)
+        smoothEditor.setText(text, false);
 }
 
 void ContourAudioProcessorEditor::chooseFile()

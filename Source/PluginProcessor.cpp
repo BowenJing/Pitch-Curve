@@ -19,6 +19,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout ContourAudioProcessor::creat
         juce::NormalisableRange<float>(0.0f, 2.0f, 0.01f), 1.0f,
         juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction(
             [] (float value, int) { return juce::String(juce::roundToInt(value * 100.0f)); })));
+    parameters.push_back(std::make_unique<juce::AudioParameterInt>(
+        juce::ParameterID { "smooth", 1 }, "Smooth", 0, 10, 3));
     return { parameters.begin(), parameters.end() };
 }
 
@@ -77,6 +79,29 @@ float ContourAudioProcessor::curveValueAt(float position,
     return juce::jmap(proportion, lower->cents, upper->cents);
 }
 
+float ContourAudioProcessor::smoothedCurveValueAt(float position,
+                                                   const CurveData& curve,
+                                                   int smooth) const
+{
+    if (smooth <= 0 || curve.pointCount < 3)
+        return curveValueAt(position, curve);
+
+    const float radius = 0.004f * static_cast<float>(smooth);
+    float weightedValue = 0.0f;
+    float totalWeight = 0.0f;
+    for (int offset = -smooth; offset <= smooth; ++offset)
+    {
+        const float proportion = static_cast<float>(offset) / static_cast<float>(smooth);
+        float wrappedPosition = position + proportion * radius;
+        wrappedPosition -= std::floor(wrappedPosition);
+        const float weight = static_cast<float>(smooth + 1 - std::abs(offset));
+        weightedValue += curveValueAt(wrappedPosition, curve) * weight;
+        totalWeight += weight;
+    }
+    return totalWeight > 0.0f ? weightedValue / totalWeight
+                              : curveValueAt(position, curve);
+}
+
 void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     processBlockInternal(buffer, false);
@@ -107,6 +132,7 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
     const auto& curve = curveBuffers[static_cast<size_t>(curveIndex)];
     const float duration = curve.durationSeconds;
     const float amount = state.getRawParameterValue("amount")->load();
+    const int smooth = juce::roundToInt(state.getRawParameterValue("smooth")->load());
     const bool contourEnabled = ! forceBypass && curve.pointCount > 0 && duration > 0.0f
                              && std::abs(amount) > 1.0e-6f;
     effectMix.setTargetValue(contourEnabled ? 1.0f : 0.0f);
@@ -157,7 +183,8 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
         displayPosition.store(transportStopped ? 0.0f : position);
 
         const float targetCents = contourEnabled
-            ? juce::jlimit(-2400.0f, 2400.0f, curveValueAt(position, curve) * amount)
+            ? juce::jlimit(-1200.0f, 1200.0f,
+                           smoothedCurveValueAt(position, curve, smooth) * amount)
             : 0.0f;
         pitchSmoother.setTargetValue(targetCents);
         stretcher.setTransposeSemitones(pitchSmoother.skip(blockSamples) / 100.0f);
@@ -211,7 +238,7 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
     for (auto& point : points)
     {
         point.position = juce::jlimit(0.0f, 1.0f, point.position);
-        point.cents = juce::jlimit(-1200.0f, 1200.0f, point.cents);
+        point.cents = juce::jlimit(-600.0f, 600.0f, point.cents);
         point.confidence = juce::jlimit(0.0f, 1.0f, point.confidence);
     }
 
