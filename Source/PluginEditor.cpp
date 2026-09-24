@@ -22,7 +22,7 @@ public:
     {
         sampleRate = source->sampleRate;
         bitsPerSample = source->bitsPerSample;
-        lengthInSamples = juce::jmin<juce::int64>(source->lengthInSamples, maximumSamples);
+        lengthInSamples = std::min<juce::int64>(source->lengthInSamples, maximumSamples);
         numChannels = juce::jmin(2u, source->numChannels);
         usesFloatingPointData = source->usesFloatingPointData;
     }
@@ -40,7 +40,7 @@ public:
             return true;
         }
         const auto available = static_cast<int>(
-            juce::jmin<juce::int64>(samples, lengthInSamples - sourceStart));
+            std::min<juce::int64>(samples, lengthInSamples - sourceStart));
         const bool succeeded =
             source->readSamples(destination, destinationChannels, destinationOffset,
                                 sourceStart, available);
