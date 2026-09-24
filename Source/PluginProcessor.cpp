@@ -23,7 +23,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ContourAudioProcessor::creat
         juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction(
             [] (float value, int) { return juce::String(juce::roundToInt(value * 100.0f)); })));
     parameters.push_back(std::make_unique<juce::AudioParameterInt>(
-        juce::ParameterID { "smooth", 1 }, "Smooth", 0, 10, 3));
+        juce::ParameterID { "smooth", 1 }, "Smooth", 0, 10, 5));
     return { parameters.begin(), parameters.end() };
 }
 
@@ -88,6 +88,7 @@ float ContourAudioProcessor::steppedCurveValueAt(float position,
 {
     if (curve.pointCount == 0)
         return 0.0f;
+    position = PitchCurveSmoothing::quantiseStepPosition(position);
     const auto begin = curve.points.begin();
     const auto end = begin + static_cast<std::ptrdiff_t>(curve.pointCount);
     const auto upper = std::upper_bound(
@@ -311,7 +312,7 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
     auto& updated = curveBuffers[static_cast<size_t>(target)];
     updated.pointCount = points.size();
     std::copy(points.begin(), points.end(), updated.points.begin());
-    updated.durationSeconds = juce::jlimit(1.0f / 30.0f, 600.0f, durationSeconds);
+    updated.durationSeconds = juce::jlimit(1.0f / 30.0f, 60.0f, durationSeconds);
     publishedCurveIndex.store(target, std::memory_order_release);
     curveSlotState[static_cast<size_t>(target)].store(0, std::memory_order_release);
     contourRevision.fetch_add(1);

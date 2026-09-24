@@ -13,6 +13,10 @@ const auto accent = juce::Colour::fromRGB(126, 211, 177);
 
 namespace
 {
+constexpr int framesPerSecond = 30;
+constexpr int maximumDurationSeconds = 60;
+constexpr int maximumDurationFrames = maximumDurationSeconds * framesPerSecond;
+
 class LimitedAudioFormatReader final : public juce::AudioFormatReader
 {
 public:
@@ -100,13 +104,27 @@ void ContourLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w
 void ContourLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
                                                const juce::Colour&, bool highlighted, bool down)
 {
-    auto colour = button.getComponentID() == "primary" ? Palette::accent : Palette::panelLight;
+    const bool primary = button.getComponentID() == "primary";
+    auto colour = primary && button.isEnabled() ? Palette::accent : Palette::panelLight;
     if (highlighted)
         colour = colour.brighter(0.08f);
     if (down)
         colour = colour.darker(0.12f);
-    g.setColour(colour.withAlpha(button.isEnabled() ? 1.0f : 0.35f));
+    g.setColour(colour.withAlpha(button.isEnabled() ? 1.0f : 0.82f));
     g.fillRoundedRectangle(button.getLocalBounds().toFloat(), 8.0f);
+}
+
+void ContourLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button,
+                                        bool, bool)
+{
+    const bool primary = button.getComponentID() == "primary";
+    const auto colour = primary && button.isEnabled()
+        ? Palette::background
+        : (button.isEnabled() ? Palette::text : Palette::muted);
+    g.setColour(colour);
+    g.setFont(getTextButtonFont(button, button.getHeight()));
+    g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(6, 0),
+                     juce::Justification::centred, 1);
 }
 
 juce::Font ContourLookAndFeel::getTextButtonFont(juce::TextButton&, int)
@@ -145,7 +163,7 @@ float CurveEditor::yFromCents(float cents) const
 float CurveEditor::displayRangeSemitones() const
 {
     const float amount = processor.parameters().getRawParameterValue("amount")->load();
-    return 6.0f * amount;
+    return juce::jlimit(0.0f, 12.0f, 6.0f * amount);
 }
 
 float CurveEditor::linearCentsAt(float position) const
@@ -184,7 +202,7 @@ float CurveEditor::steppedCentsAt(float position) const
     if (editablePoints.empty())
         return 0.0f;
 
-    position -= std::floor(position);
+    position = PitchCurveSmoothing::quantiseStepPosition(position);
     if (editablePointsAreUniform && editablePoints.size() > 1)
     {
         const auto index = static_cast<size_t>(std::floor(
@@ -225,14 +243,13 @@ void CurveEditor::paint(juce::Graphics& g)
     const float semitoneRange = displayRangeSemitones();
     for (int tick = -2; tick <= 2; ++tick)
     {
-        const float baseCents = static_cast<float>(tick) * 600.0f;
+        const float baseCents = static_cast<float>(tick) * 300.0f;
         const float semitones = semitoneRange * static_cast<float>(tick) / 2.0f;
         const float y = yFromCents(baseCents);
         g.setColour(tick == 0 ? Palette::muted.withAlpha(0.45f)
                               : Palette::muted.withAlpha(0.16f));
         g.drawHorizontalLine(juce::roundToInt(y), bounds.getX(), bounds.getRight());
-        if (tick != 0
-            && (semitoneRange > 1.0e-6f || std::abs(tick) == 2))
+        if (std::abs(tick) == 2)
         {
             const float rounded = std::round(semitones);
             const auto value = std::abs(semitones - rounded) < 0.01f
@@ -269,15 +286,17 @@ void CurveEditor::paint(juce::Graphics& g)
             processor.parameters().getRawParameterValue("smooth")->load());
         if (smooth == 0)
         {
-            curve.startNewSubPath(
-                bounds.getX() + editablePoints.front().position * bounds.getWidth(),
-                yFromCents(editablePoints.front().cents));
-            for (size_t i = 1; i < editablePoints.size(); ++i)
+            float previousCents = steppedCentsAt(0.0f);
+            curve.startNewSubPath(bounds.getX(), yFromCents(previousCents));
+            for (int i = 1; i <= PitchCurveSmoothing::stepIntervals; ++i)
             {
-                const float x =
-                    bounds.getX() + editablePoints[i].position * bounds.getWidth();
-                curve.lineTo(x, yFromCents(editablePoints[i - 1].cents));
-                curve.lineTo(x, yFromCents(editablePoints[i].cents));
+                const float position = static_cast<float>(i)
+                                     / PitchCurveSmoothing::stepIntervals;
+                const float x = bounds.getX() + position * bounds.getWidth();
+                curve.lineTo(x, yFromCents(previousCents));
+                const float nextCents = steppedCentsAt(position);
+                curve.lineTo(x, yFromCents(nextCents));
+                previousCents = nextCents;
             }
         }
         else
@@ -623,8 +642,8 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
 
     timeKnob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     timeKnob.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    timeKnob.setRange(1.0, 600.0 * 30.0, 1.0);
-    timeKnob.setSkewFactorFromMidPoint(300.0);
+    timeKnob.setRange(1.0, maximumDurationFrames, 1.0);
+    timeKnob.setSkewFactorFromMidPoint(5.0 * framesPerSecond);
     timeKnob.setMouseClickGrabsKeyboardFocus(true);
     timeKnob.onDragStart = [this]
     {
@@ -820,14 +839,12 @@ void ContourAudioProcessorEditor::filesDropped(const juce::StringArray& files, i
 
 void ContourAudioProcessorEditor::applyDurationTimecode()
 {
-    constexpr int framesPerSecond = 30;
-    constexpr int maximumTotalFrames = 600 * framesPerSecond;
     const int64_t enteredSeconds = juce::jmax<int64_t>(0, secondsEditor.getText().getIntValue());
     const int64_t enteredFrames = juce::jmax<int64_t>(0, framesEditor.getText().getIntValue());
     const int totalFrames = juce::jlimit(
-        1, maximumTotalFrames,
+        1, maximumDurationFrames,
         static_cast<int>(juce::jmin<int64_t>(
-            maximumTotalFrames, enteredSeconds * framesPerSecond + enteredFrames)));
+            maximumDurationFrames, enteredSeconds * framesPerSecond + enteredFrames)));
 
     const float duration = static_cast<float>(totalFrames)
                          / static_cast<float>(framesPerSecond);
@@ -844,10 +861,8 @@ void ContourAudioProcessorEditor::applyDurationTimecode()
 
 void ContourAudioProcessorEditor::updateDurationTimecode()
 {
-    constexpr int framesPerSecond = 30;
-    constexpr int maximumTotalFrames = 600 * framesPerSecond;
     const int totalFrames = juce::jlimit(
-        1, maximumTotalFrames,
+        1, maximumDurationFrames,
         juce::roundToInt(processor.getContourDuration() * framesPerSecond));
     const auto secondsText = juce::String(totalFrames / framesPerSecond);
     const auto framesText = juce::String(totalFrames % framesPerSecond);

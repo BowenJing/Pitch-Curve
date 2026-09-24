@@ -186,6 +186,26 @@ bool testStateRoundTripAndBounds()
     return true;
 }
 
+bool testDefaultsAndDurationLimit()
+{
+    ContourAudioProcessor processor;
+    if (std::abs(processor.parameters().getRawParameterValue("smooth")->load() - 5.0f)
+        > 1.0e-6f)
+    {
+        std::cerr << "Smooth must default to 5\n";
+        return false;
+    }
+
+    processor.setContour({ { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f, 1.0f } },
+                         600.0f);
+    if (std::abs(processor.getContourDuration() - 60.0f) > 1.0e-6f)
+    {
+        std::cerr << "Curve duration must be limited to 60 seconds\n";
+        return false;
+    }
+    return true;
+}
+
 bool testStoppedTransportResetsDisplay()
 {
     ContourAudioProcessor processor;
@@ -262,6 +282,16 @@ bool testStoppedTransportResetsDisplay()
 
 bool testSmoothScaleEndpoints()
 {
+    const float firstStep = PitchCurveSmoothing::quantiseStepPosition(0.01f);
+    const float sameStep = PitchCurveSmoothing::quantiseStepPosition(0.04f);
+    const float nextStep = PitchCurveSmoothing::quantiseStepPosition(0.05f);
+    if (std::abs(firstStep - sameStep) > 1.0e-6f
+        || std::abs(nextStep - 1.0f / PitchCurveSmoothing::stepIntervals) > 1.0e-6f)
+    {
+        std::cerr << "Smooth 0 steps must preserve the minimum segment length\n";
+        return false;
+    }
+
     const auto linearValueAt = [] (float position)
     {
         return position * 100.0f;
@@ -366,6 +396,7 @@ int main()
     if (! testLatencyMatchedBypass()
         || ! testContourWithOversizedBlocks()
         || ! testStateRoundTripAndBounds()
+        || ! testDefaultsAndDurationLimit()
         || ! testStoppedTransportResetsDisplay()
         || ! testSmoothScaleEndpoints()
         || ! testConcurrentCurvePublication())

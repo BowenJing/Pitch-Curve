@@ -5,6 +5,15 @@
 
 namespace PitchCurveSmoothing
 {
+constexpr int stepIntervals = 24;
+
+inline float quantiseStepPosition(float position)
+{
+    position -= std::floor(position);
+    return std::floor(position * static_cast<float>(stepIntervals))
+         / static_cast<float>(stepIntervals);
+}
+
 template <typename LinearValueAt, typename SteppedValueAt>
 float valueAt(float position, int smooth,
               LinearValueAt&& linearValueAt,

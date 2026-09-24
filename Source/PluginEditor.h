@@ -11,6 +11,7 @@ public:
                           float, float, juce::Slider&) override;
     void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour&,
                               bool, bool) override;
+    void drawButtonText(juce::Graphics&, juce::TextButton&, bool, bool) override;
     juce::Font getTextButtonFont(juce::TextButton&, int) override;
 };
 
@@ -120,7 +121,7 @@ private:
     CurveEditor curveEditor;
     AudioWaveformView waveform;
     juce::TextButton fileButton { "DROP AUDIO OR BROWSE" };
-    juce::TextButton learnButton { "LEARN CONTOUR" };
+    juce::TextButton learnButton { "LEARN CURVE" };
     juce::TextButton clearButton { "CLEAR CURVE" };
     juce::Label title;
     juce::Label fileName;
