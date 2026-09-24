@@ -318,6 +318,12 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
     contourRevision.fetch_add(1);
 }
 
+void ContourAudioProcessor::setContourAutoFit(bool enabled) noexcept
+{
+    if (contourAutoFit.exchange(enabled) != enabled)
+        contourRevision.fetch_add(1);
+}
+
 std::vector<PitchPoint> ContourAudioProcessor::getContour() const
 {
     std::lock_guard<std::mutex> lock(curveWriterMutex);
@@ -347,6 +353,7 @@ void ContourAudioProcessor::getStateInformation(juce::MemoryBlock& destination)
     juce::ValueTree curve("CONTOUR");
     curve.setProperty("schema", 2, nullptr);
     curve.setProperty("duration", snapshot.durationSeconds, nullptr);
+    curve.setProperty("autoFit", contourAutoFit.load(), nullptr);
     for (size_t i = 0; i < snapshot.pointCount; ++i)
     {
         const auto& point = snapshot.points[i];
@@ -397,6 +404,7 @@ void ContourAudioProcessor::setStateInformation(const void* data, int size)
                         point.cents *= 0.5f;
             }
             setContour(std::move(restored), curve.getProperty("duration", 2.0f));
+            setContourAutoFit(curve.getProperty("autoFit", false));
         }
 
         auto parameterState = root.createCopy();

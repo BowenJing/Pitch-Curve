@@ -24,16 +24,20 @@ float valueAt(float position, int smooth,
     if (smooth == 0)
         return stepped;
 
-    const float radius = 0.004f * static_cast<float>(smooth);
+    const float amount = static_cast<float>(smooth) / 10.0f;
+    const int kernelSmooth = std::clamp(
+        static_cast<int>(std::lround(10.0f * std::sqrt(amount))), 1, 10);
+    const float radius = 0.004f * static_cast<float>(kernelSmooth);
     float weightedValue = 0.0f;
     float totalWeight = 0.0f;
-    for (int offset = -smooth; offset <= smooth; ++offset)
+    for (int offset = -kernelSmooth; offset <= kernelSmooth; ++offset)
     {
         const float proportion = static_cast<float>(offset)
-                               / static_cast<float>(smooth);
+                               / static_cast<float>(kernelSmooth);
         float wrappedPosition = position + proportion * radius;
         wrappedPosition -= std::floor(wrappedPosition);
-        const float weight = static_cast<float>(smooth + 1 - std::abs(offset));
+        const float weight =
+            static_cast<float>(kernelSmooth + 1 - std::abs(offset));
         weightedValue += linearValueAt(wrappedPosition) * weight;
         totalWeight += weight;
     }
@@ -43,7 +47,10 @@ float valueAt(float position, int smooth,
         : linearValueAt(position);
     if (smooth == 10)
         return rounded;
-    const float blend = static_cast<float>(smooth) / 10.0f;
+    const float blend = smooth >= 5
+        ? 1.0f
+        : std::sin(static_cast<float>(smooth) / 5.0f
+                   * 0.5f * 3.14159265358979323846f);
     return stepped + blend * (rounded - stepped);
 }
 }

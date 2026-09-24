@@ -144,6 +144,7 @@ bool testStateRoundTripAndBounds()
         amount->setValueNotifyingHost(amount->convertTo0to1(1.5f));
     if (auto* smooth = source.parameters().getParameter("smooth"))
         smooth->setValueNotifyingHost(smooth->convertTo0to1(10.0f));
+    source.setContourAutoFit(true);
 
     juce::MemoryBlock state;
     source.getStateInformation(state);
@@ -156,7 +157,8 @@ bool testStateRoundTripAndBounds()
         || std::abs(restoredCurve.front().cents - restoredCurve.back().cents) > 1.0e-6f
         || std::abs(restored.getContourDuration() - 3.5f) > 1.0e-6f
         || std::abs(restored.parameters().getRawParameterValue("smooth")->load() - 10.0f)
-               > 1.0e-6f)
+               > 1.0e-6f
+        || ! restored.isContourAutoFit())
     {
         std::cerr << "Contour state did not round-trip safely\n";
         return false;
@@ -340,6 +342,19 @@ bool testSmoothScaleEndpoints()
         if (! std::isfinite(value))
         {
             std::cerr << "Intermediate smooth level produced a non-finite value\n";
+            return false;
+        }
+    }
+
+    const auto flatLinear = [] (float) { return 0.0f; };
+    const auto jaggedStep = [] (float) { return 100.0f; };
+    for (const int smooth : { 5, 9 })
+    {
+        const float value = PitchCurveSmoothing::valueAt(
+            0.25f, smooth, flatLinear, jaggedStep);
+        if (std::abs(value) > 1.0e-6f)
+        {
+            std::cerr << "Medium and high Smooth must not retain staircase ripple\n";
             return false;
         }
     }

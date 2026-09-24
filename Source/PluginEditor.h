@@ -56,6 +56,10 @@ private:
     float centsFromY(float) const;
     float yFromCents(float) const;
     float displayRangeSemitones() const;
+    float calculateDisplayRangeSemitones() const;
+    void updateDisplayRange();
+    float displaySemitonesFromY(float) const;
+    float yFromDisplaySemitones(float) const;
     float linearCentsAt(float) const;
     float steppedCentsAt(float) const;
     float displayCentsAt(float) const;
@@ -70,6 +74,8 @@ private:
     float animatedPlayheadPosition = 0.0f;
     int observedSmooth = -1;
     float observedAmount = -1.0f;
+    bool observedAutoFit = false;
+    float cachedDisplayRangeSemitones = 6.0f;
 };
 
 class AudioWaveformView final : public juce::Component,
