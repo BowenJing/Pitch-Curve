@@ -32,6 +32,8 @@ float valueAt(float position, int smooth,
     const float rounded = totalWeight > 0.0f
         ? weightedValue / totalWeight
         : linearValueAt(position);
+    if (smooth == 10)
+        return rounded;
     const float blend = static_cast<float>(smooth) / 10.0f;
     return stepped + blend * (rounded - stepped);
 }
