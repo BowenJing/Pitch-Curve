@@ -16,19 +16,19 @@ class LimitedAudioFormatReader final : public juce::AudioFormatReader
 {
 public:
     LimitedAudioFormatReader(std::unique_ptr<juce::AudioFormatReader> sourceReader,
-                             int64_t maximumSamples)
+                             juce::int64 maximumSamples)
         : juce::AudioFormatReader(nullptr, sourceReader->getFormatName()),
           source(std::move(sourceReader))
     {
         sampleRate = source->sampleRate;
         bitsPerSample = source->bitsPerSample;
-        lengthInSamples = juce::jmin(source->lengthInSamples, maximumSamples);
+        lengthInSamples = juce::jmin<juce::int64>(source->lengthInSamples, maximumSamples);
         numChannels = juce::jmin(2u, source->numChannels);
         usesFloatingPointData = source->usesFloatingPointData;
     }
 
     bool readSamples(int* const* destination, int destinationChannels,
-                     int destinationOffset, int64_t sourceStart,
+                     int destinationOffset, juce::int64 sourceStart,
                      int samples) override
     {
         if (sourceStart >= lengthInSamples)
@@ -40,7 +40,7 @@ public:
             return true;
         }
         const auto available = static_cast<int>(
-            juce::jmin<int64_t>(samples, lengthInSamples - sourceStart));
+            juce::jmin<juce::int64>(samples, lengthInSamples - sourceStart));
         const bool succeeded =
             source->readSamples(destination, destinationChannels, destinationOffset,
                                 sourceStart, available);
@@ -849,7 +849,7 @@ void ContourAudioProcessorEditor::setSelectedFile(const juce::File& file)
 
     if (! waveform.setFile(file))
     {
-        selectedFile = {};
+        selectedFile = juce::File {};
         waveform.clear();
         fileName.setText("No Audio File", juce::dontSendNotification);
         status.setText("Unsupported or unsafe audio file", juce::dontSendNotification);
