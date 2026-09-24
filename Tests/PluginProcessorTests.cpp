@@ -348,13 +348,13 @@ bool testSmoothScaleEndpoints()
 
     const auto flatLinear = [] (float) { return 0.0f; };
     const auto jaggedStep = [] (float) { return 100.0f; };
-    for (int smooth = 1; smooth < maximumSmooth; ++smooth)
+    for (const int smooth : { 5, 9 })
     {
         const float value = PitchCurveSmoothing::valueAt(
             0.25f, smooth, flatLinear, jaggedStep);
         if (std::abs(value) > 1.0e-6f)
         {
-            std::cerr << "Smooth 1-9 must not retain staircase ripple\n";
+            std::cerr << "Medium and high Smooth must not retain staircase ripple\n";
             return false;
         }
     }

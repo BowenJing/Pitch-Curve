@@ -24,7 +24,9 @@ float valueAt(float position, int smooth,
     if (smooth == 0)
         return stepped;
 
-    const int kernelSmooth = smooth;
+    const float amount = static_cast<float>(smooth) / 10.0f;
+    const int kernelSmooth = std::clamp(
+        static_cast<int>(std::lround(10.0f * std::sqrt(amount))), 1, 10);
     const float radius = 0.004f * static_cast<float>(kernelSmooth);
     float weightedValue = 0.0f;
     float totalWeight = 0.0f;
@@ -43,6 +45,12 @@ float valueAt(float position, int smooth,
     const float rounded = totalWeight > 0.0f
         ? weightedValue / totalWeight
         : linearValueAt(position);
-    return rounded;
+    if (smooth == 10)
+        return rounded;
+    const float blend = smooth >= 5
+        ? 1.0f
+        : std::sin(static_cast<float>(smooth) / 5.0f
+                   * 0.5f * 3.14159265358979323846f);
+    return stepped + blend * (rounded - stepped);
 }
 }
