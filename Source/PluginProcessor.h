@@ -41,8 +41,6 @@ public:
     uint64_t getContourRevision() const noexcept { return contourRevision.load(); }
     float getPlayheadPosition() const noexcept { return displayPosition.load(); }
     bool isPlayheadRunning() const noexcept { return displayPlaying.load(); }
-    bool isContourAutoFit() const noexcept { return contourAutoFit.load(); }
-    void setContourAutoFit(bool enabled) noexcept;
     juce::AudioProcessorValueTreeState& parameters() noexcept { return state; }
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -80,7 +78,6 @@ private:
     std::atomic<uint64_t> contourRevision { 0 };
     std::atomic<float> displayPosition { 0.0f };
     std::atomic<bool> displayPlaying { false };
-    std::atomic<bool> contourAutoFit { false };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ContourAudioProcessor)
 };

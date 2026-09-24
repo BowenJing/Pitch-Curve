@@ -104,19 +104,24 @@ void ContourLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w
 void ContourLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
                                                const juce::Colour&, bool highlighted, bool down)
 {
-    auto colour = Palette::panelLight;
+    const bool primary = button.getComponentID() == "primary";
+    auto colour = primary && button.isEnabled() ? Palette::accent : Palette::panelLight;
     if (highlighted)
         colour = colour.brighter(0.08f);
     if (down)
         colour = colour.darker(0.12f);
-    g.setColour(colour.withAlpha(button.isEnabled() ? 1.0f : 0.62f));
+    g.setColour(colour.withAlpha(button.isEnabled() ? 1.0f : 0.82f));
     g.fillRoundedRectangle(button.getLocalBounds().toFloat(), 8.0f);
 }
 
 void ContourLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button,
                                         bool, bool)
 {
-    g.setColour(Palette::text);
+    const bool primary = button.getComponentID() == "primary";
+    const auto colour = primary && button.isEnabled()
+        ? Palette::background
+        : (button.isEnabled() ? Palette::text : Palette::muted);
+    g.setColour(colour);
     g.setFont(getTextButtonFont(button, button.getHeight()));
     g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(6, 0),
                      juce::Justification::centred, 1);
@@ -124,15 +129,13 @@ void ContourLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& but
 
 juce::Font ContourLookAndFeel::getTextButtonFont(juce::TextButton&, int)
 {
-    return juce::Font(juce::FontOptions(13.0f, juce::Font::bold));
+    return juce::Font(juce::FontOptions(12.0f, juce::Font::bold));
 }
 
 CurveEditor::CurveEditor(ContourAudioProcessor& owner) : processor(owner)
 {
     editablePoints = processor.getContour();
     observedRevision = processor.getContourRevision();
-    observedAutoFit = processor.isContourAutoFit();
-    updateDisplayRange();
     setWantsKeyboardFocus(true);
     setMouseCursor(juce::MouseCursor::CrosshairCursor);
     startTimerHz(60);
@@ -145,71 +148,22 @@ juce::Rectangle<float> CurveEditor::graphBounds() const
 
 float CurveEditor::centsFromY(float y) const
 {
-    const float amount =
-        processor.parameters().getRawParameterValue("amount")->load();
-    if (amount <= 1.0e-6f)
-        return 0.0f;
-    return juce::jlimit(
-        -600.0f, 600.0f, displaySemitonesFromY(y) * 100.0f / amount);
+    const auto bounds = graphBounds();
+    return juce::jmap(juce::jlimit(bounds.getY(), bounds.getBottom(), y),
+                      bounds.getBottom(), bounds.getY(), -600.0f, 600.0f);
 }
 
 float CurveEditor::yFromCents(float cents) const
 {
-    const float amount =
-        processor.parameters().getRawParameterValue("amount")->load();
-    return yFromDisplaySemitones(cents * amount / 100.0f);
-}
-
-float CurveEditor::displaySemitonesFromY(float y) const
-{
     const auto bounds = graphBounds();
-    const float range = displayRangeSemitones();
-    if (range <= 1.0e-6f)
-        return 0.0f;
-    return juce::jmap(juce::jlimit(bounds.getY(), bounds.getBottom(), y),
-                      bounds.getBottom(), bounds.getY(), -range, range);
-}
-
-float CurveEditor::yFromDisplaySemitones(float semitones) const
-{
-    const auto bounds = graphBounds();
-    const float range = displayRangeSemitones();
-    if (range <= 1.0e-6f)
-        return bounds.getCentreY();
-    return juce::jmap(juce::jlimit(-range, range, semitones),
-                      -range, range, bounds.getBottom(), bounds.getY());
+    return juce::jmap(juce::jlimit(-600.0f, 600.0f, cents),
+                      -600.0f, 600.0f, bounds.getBottom(), bounds.getY());
 }
 
 float CurveEditor::displayRangeSemitones() const
 {
-    return cachedDisplayRangeSemitones;
-}
-
-float CurveEditor::calculateDisplayRangeSemitones() const
-{
     const float amount = processor.parameters().getRawParameterValue("amount")->load();
-    const float maximumRange = juce::jlimit(0.0f, 12.0f, 6.0f * amount);
-    if (maximumRange <= 1.0e-6f
-        || ! processor.isContourAutoFit() || editablePoints.empty())
-        return maximumRange;
-
-    std::vector<float> magnitudes;
-    magnitudes.reserve(editablePoints.size());
-    for (const auto& point : editablePoints)
-        magnitudes.push_back(std::abs(point.cents) * amount / 100.0f);
-    const size_t percentileIndex = static_cast<size_t>(
-        std::floor(0.95 * static_cast<double>(magnitudes.size() - 1)));
-    std::nth_element(magnitudes.begin(),
-                     magnitudes.begin() + static_cast<std::ptrdiff_t>(percentileIndex),
-                     magnitudes.end());
-    const float robustRange = magnitudes[percentileIndex] * 1.15f;
-    const float roundedRange = std::ceil(juce::jmax(0.5f, robustRange) * 2.0f) * 0.5f;
-    return juce::jmin(maximumRange, roundedRange);
-}
-
-void CurveEditor::updateDisplayRange()
-{
-    cachedDisplayRangeSemitones = calculateDisplayRangeSemitones();
+    return juce::jlimit(0.0f, 12.0f, 6.0f * amount);
 }
 
 float CurveEditor::linearCentsAt(float position) const
@@ -289,8 +243,9 @@ void CurveEditor::paint(juce::Graphics& g)
     const float semitoneRange = displayRangeSemitones();
     for (int tick = -2; tick <= 2; ++tick)
     {
+        const float baseCents = static_cast<float>(tick) * 300.0f;
         const float semitones = semitoneRange * static_cast<float>(tick) / 2.0f;
-        const float y = yFromDisplaySemitones(semitones);
+        const float y = yFromCents(baseCents);
         g.setColour(tick == 0 ? Palette::muted.withAlpha(0.45f)
                               : Palette::muted.withAlpha(0.16f));
         g.drawHorizontalLine(juce::roundToInt(y), bounds.getX(), bounds.getRight());
@@ -461,9 +416,6 @@ void CurveEditor::drawAt(juce::Point<float> point)
 void CurveEditor::mouseDown(const juce::MouseEvent& event)
 {
     grabKeyboardFocus();
-    processor.setContourAutoFit(false);
-    observedAutoFit = false;
-    updateDisplayRange();
     drawAt(event.position);
     processor.setContour(editablePoints, processor.getContourDuration());
     previousDrawPosition = event.position;
@@ -498,11 +450,8 @@ void CurveEditor::mouseUp(const juce::MouseEvent&)
 void CurveEditor::mouseDoubleClick(const juce::MouseEvent&)
 {
     previousDrawPosition.reset();
-    processor.setContourAutoFit(false);
-    observedAutoFit = false;
     editablePoints.clear();
     editablePointsAreUniform = false;
-    updateDisplayRange();
     processor.setContour({}, processor.getContourDuration());
     repaint();
 }
@@ -538,16 +487,11 @@ void CurveEditor::timerCallback()
         processor.parameters().getRawParameterValue("smooth")->load());
     const float currentAmount =
         processor.parameters().getRawParameterValue("amount")->load();
-    const bool currentAutoFit = processor.isContourAutoFit();
-    bool displayRangeChanged =
-        std::abs(currentAmount - observedAmount) > 1.0e-6f
-        || currentAutoFit != observedAutoFit;
     if (currentSmooth != observedSmooth
-        || displayRangeChanged)
+        || std::abs(currentAmount - observedAmount) > 1.0e-6f)
     {
         observedSmooth = currentSmooth;
         observedAmount = currentAmount;
-        observedAutoFit = currentAutoFit;
         repaintNeeded = true;
     }
 
@@ -559,12 +503,9 @@ void CurveEditor::timerCallback()
             editablePoints = processor.getContour();
             editablePointsAreUniform = false;
             observedRevision = revision;
-            displayRangeChanged = true;
             repaintNeeded = true;
         }
     }
-    if (displayRangeChanged)
-        updateDisplayRange();
     if (repaintNeeded)
         repaint();
 }
@@ -643,9 +584,9 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     status.setFont(juce::Font(juce::FontOptions(12.0f)));
     status.setJustificationType(juce::Justification::centredRight);
     fileName.setText("No Audio File", juce::dontSendNotification);
-    fileName.setColour(juce::Label::textColourId, Palette::text);
+    fileName.setColour(juce::Label::textColourId, Palette::muted);
     fileName.setJustificationType(juce::Justification::centred);
-    fileName.setFont(juce::Font(juce::FontOptions(13.0f, juce::Font::bold)));
+    fileName.setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
     secondsLabel.setText("SECOND", juce::dontSendNotification);
     framesLabel.setText("FRAME", juce::dontSendNotification);
     amountLabel.setText("AMOUNT", juce::dontSendNotification);
@@ -719,11 +660,12 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     updateDurationTimecode();
 
     fileButton.onClick = [this] { chooseFile(); };
+    learnButton.setComponentID("primary");
+    learnButton.setColour(juce::TextButton::textColourOffId, Palette::background);
     learnButton.setEnabled(false);
     learnButton.onClick = [this] { beginLearning(); };
     clearButton.onClick = [this]
     {
-        processor.setContourAutoFit(false);
         processor.setContour({}, processor.getContourDuration());
         status.setText("Curve cleared - draw or learn a new contour",
                        juce::dontSendNotification);
@@ -788,7 +730,7 @@ ContourAudioProcessorEditor::~ContourAudioProcessorEditor()
 void ContourAudioProcessorEditor::paint(juce::Graphics& g)
 {
     g.fillAll(Palette::background);
-    auto dropArea = juce::Rectangle<float>(24.0f, 88.0f, getWidth() - 48.0f, 126.0f);
+    auto dropArea = juce::Rectangle<float>(24.0f, 92.0f, getWidth() - 48.0f, 110.0f);
     g.setColour(Palette::panel);
     g.fillRoundedRectangle(dropArea, 12.0f);
     g.setColour(Palette::muted.withAlpha(0.35f));
@@ -801,11 +743,11 @@ void ContourAudioProcessorEditor::resized()
     title.setBounds(margin, 27, 280, 34);
     status.setBounds(getWidth() - 330, 27, 306, 28);
 
-    auto drop = juce::Rectangle<int>(margin, 96, getWidth() - margin * 2, 110);
-    const auto fileButtonArea = drop.removeFromLeft(200);
-    const auto learnButtonArea = drop.removeFromRight(200);
-    fileButton.setBounds(fileButtonArea.withSizeKeepingCentre(fileButtonArea.getWidth(), 96));
-    learnButton.setBounds(learnButtonArea.withSizeKeepingCentre(learnButtonArea.getWidth(), 96));
+    auto drop = juce::Rectangle<int>(margin, 102, getWidth() - margin * 2, 90);
+    const auto fileButtonArea = drop.removeFromLeft(220);
+    const auto learnButtonArea = drop.removeFromRight(180);
+    fileButton.setBounds(fileButtonArea.withSizeKeepingCentre(fileButtonArea.getWidth(), 70));
+    learnButton.setBounds(learnButtonArea.withSizeKeepingCentre(learnButtonArea.getWidth(), 70));
     auto preview = drop.reduced(16, 2);
     if (selectedFile.existsAsFile())
     {
@@ -819,8 +761,8 @@ void ContourAudioProcessorEditor::resized()
     }
 
     const int controlWidth = 120;
-    auto content = juce::Rectangle<int>(margin, 230, getWidth() - margin * 2,
-                                        getHeight() - 254);
+    auto content = juce::Rectangle<int>(margin, 222, getWidth() - margin * 2,
+                                        getHeight() - 246);
     auto control = content.removeFromRight(controlWidth);
     curveEditor.setBounds(content.reduced(0, 0).withTrimmedRight(16));
 
@@ -1088,7 +1030,6 @@ void ContourAudioProcessorEditor::run()
             return;
         }
         safe->processor.setContour(std::move(result.points), result.durationSeconds);
-        safe->processor.setContourAutoFit(true);
         safe->updateDurationTimecode();
         safe->status.setText(juce::String(result.referenceHz, 1) + " Hz reference | "
                                  + juce::String(result.durationSeconds, 1) + " s contour",
