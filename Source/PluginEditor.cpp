@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "CurveSmoothing.h"
 
 namespace Palette
 {
@@ -119,7 +120,7 @@ CurveEditor::CurveEditor(ContourAudioProcessor& owner) : processor(owner)
     observedRevision = processor.getContourRevision();
     setWantsKeyboardFocus(true);
     setMouseCursor(juce::MouseCursor::CrosshairCursor);
-    startTimerHz(30);
+    startTimerHz(60);
 }
 
 juce::Rectangle<float> CurveEditor::graphBounds() const
@@ -147,45 +148,65 @@ float CurveEditor::displayRangeSemitones() const
     return 6.0f * amount;
 }
 
-float CurveEditor::displayCentsAt(float position) const
+float CurveEditor::linearCentsAt(float position) const
 {
     if (editablePoints.empty())
         return 0.0f;
 
-    const auto valueAt = [this] (float samplePosition)
+    position -= std::floor(position);
+    if (editablePointsAreUniform && editablePoints.size() > 1)
     {
-        samplePosition -= std::floor(samplePosition);
-        const auto upper = std::lower_bound(
-            editablePoints.begin(), editablePoints.end(), samplePosition,
-            [] (const PitchPoint& point, float value) { return point.position < value; });
-        if (upper == editablePoints.begin())
-            return upper->cents;
-        if (upper == editablePoints.end())
-            return editablePoints.back().cents;
-        const auto lower = upper - 1;
-        const float span = upper->position - lower->position;
-        const float proportion = span > 0.0f
-            ? (samplePosition - lower->position) / span
-            : 0.0f;
-        return juce::jmap(proportion, lower->cents, upper->cents);
-    };
+        const float scaled = position * static_cast<float>(editablePoints.size() - 1);
+        const auto lowerIndex = static_cast<size_t>(std::floor(scaled));
+        const auto upperIndex = juce::jmin(lowerIndex + 1, editablePoints.size() - 1);
+        return juce::jmap(scaled - static_cast<float>(lowerIndex),
+                          editablePoints[lowerIndex].cents,
+                          editablePoints[upperIndex].cents);
+    }
 
+    const auto upper = std::lower_bound(
+        editablePoints.begin(), editablePoints.end(), position,
+        [] (const PitchPoint& point, float value) { return point.position < value; });
+    if (upper == editablePoints.begin())
+        return upper->cents;
+    if (upper == editablePoints.end())
+        return editablePoints.back().cents;
+    const auto lower = upper - 1;
+    const float span = upper->position - lower->position;
+    const float proportion = span > 0.0f
+        ? (position - lower->position) / span
+        : 0.0f;
+    return juce::jmap(proportion, lower->cents, upper->cents);
+}
+
+float CurveEditor::steppedCentsAt(float position) const
+{
+    if (editablePoints.empty())
+        return 0.0f;
+
+    position -= std::floor(position);
+    if (editablePointsAreUniform && editablePoints.size() > 1)
+    {
+        const auto index = static_cast<size_t>(std::floor(
+            position * static_cast<float>(editablePoints.size() - 1)));
+        return editablePoints[juce::jmin(index, editablePoints.size() - 1)].cents;
+    }
+
+    const auto upper = std::upper_bound(
+        editablePoints.begin(), editablePoints.end(), position,
+        [] (float value, const PitchPoint& point) { return value < point.position; });
+    return upper == editablePoints.begin() ? editablePoints.front().cents
+                                           : (upper - 1)->cents;
+}
+
+float CurveEditor::displayCentsAt(float position) const
+{
     const int smooth = juce::roundToInt(
         processor.parameters().getRawParameterValue("smooth")->load());
-    if (smooth <= 0 || editablePoints.size() < 3)
-        return valueAt(position);
-
-    const float radius = 0.004f * static_cast<float>(smooth);
-    float weightedValue = 0.0f;
-    float totalWeight = 0.0f;
-    for (int offset = -smooth; offset <= smooth; ++offset)
-    {
-        const float proportion = static_cast<float>(offset) / static_cast<float>(smooth);
-        const float weight = static_cast<float>(smooth + 1 - std::abs(offset));
-        weightedValue += valueAt(position + proportion * radius) * weight;
-        totalWeight += weight;
-    }
-    return totalWeight > 0.0f ? weightedValue / totalWeight : valueAt(position);
+    return PitchCurveSmoothing::valueAt(
+        position, smooth,
+        [this] (float samplePosition) { return linearCentsAt(samplePosition); },
+        [this] (float samplePosition) { return steppedCentsAt(samplePosition); });
 }
 
 void CurveEditor::paint(juce::Graphics& g)
@@ -217,12 +238,20 @@ void CurveEditor::paint(juce::Graphics& g)
             const auto value = std::abs(semitones - rounded) < 0.01f
                 ? juce::String(static_cast<int>(rounded))
                 : juce::String(semitones, 1);
-            g.setColour(Palette::muted.withAlpha(0.7f));
-            g.setFont(10.0f);
-            g.drawText((semitones > 0.0f ? "+" : "") + value + " st",
-                       juce::Rectangle<float>(bounds.getX() + 5.0f, y - 13.0f,
-                                              52.0f, 12.0f),
-                       juce::Justification::left);
+            constexpr float labelHeight = 18.0f;
+            float labelY = y - labelHeight * 0.5f;
+            labelY = juce::jlimit(bounds.getY() + 2.0f,
+                                  bounds.getBottom() - labelHeight - 2.0f,
+                                  labelY);
+            const auto labelBounds = juce::Rectangle<float>(
+                bounds.getX() + 5.0f, labelY, 64.0f, labelHeight);
+            g.setColour(Palette::panel.withAlpha(0.9f));
+            g.fillRoundedRectangle(labelBounds, 3.0f);
+            g.setColour(Palette::text.withAlpha(0.82f));
+            g.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::bold)));
+            g.drawFittedText((semitones > 0.0f ? "+" : "") + value + " ST",
+                             labelBounds.toNearestInt().reduced(3, 0),
+                             juce::Justification::centredLeft, 1);
         }
     }
 
@@ -244,8 +273,12 @@ void CurveEditor::paint(juce::Graphics& g)
                 bounds.getX() + editablePoints.front().position * bounds.getWidth(),
                 yFromCents(editablePoints.front().cents));
             for (size_t i = 1; i < editablePoints.size(); ++i)
-                curve.lineTo(bounds.getX() + editablePoints[i].position * bounds.getWidth(),
-                             yFromCents(editablePoints[i].cents));
+            {
+                const float x =
+                    bounds.getX() + editablePoints[i].position * bounds.getWidth();
+                curve.lineTo(x, yFromCents(editablePoints[i - 1].cents));
+                curve.lineTo(x, yFromCents(editablePoints[i].cents));
+            }
         }
         else
         {
@@ -284,7 +317,7 @@ void CurveEditor::paint(juce::Graphics& g)
                                                  juce::PathStrokeType::rounded));
     }
 
-    const float playhead = bounds.getX() + processor.getPlayheadPosition() * bounds.getWidth();
+    const float playhead = bounds.getX() + animatedPlayheadPosition * bounds.getWidth();
     g.setColour(Palette::accent.withAlpha(0.85f));
     g.drawVerticalLine(juce::roundToInt(playhead), bounds.getY(), bounds.getBottom());
 }
@@ -349,7 +382,9 @@ void CurveEditor::drawAt(juce::Point<float> point)
 
     const int index = juce::jlimit(0, static_cast<int>(editablePoints.size()) - 1,
                                    juce::roundToInt(x * (editablePoints.size() - 1)));
-    const int radius = 3;
+    const int smooth = juce::roundToInt(
+        processor.parameters().getRawParameterValue("smooth")->load());
+    const int radius = 3 + juce::roundToInt(0.8f * static_cast<float>(smooth));
     for (int i = juce::jmax(0, index - radius);
          i <= juce::jmin(static_cast<int>(editablePoints.size()) - 1, index + radius); ++i)
     {
@@ -404,6 +439,43 @@ void CurveEditor::mouseDoubleClick(const juce::MouseEvent&)
 
 void CurveEditor::timerCallback()
 {
+    const double nowSeconds = juce::Time::getMillisecondCounterHiRes() / 1000.0;
+    const bool playheadRunning = processor.isPlayheadRunning();
+    bool repaintNeeded = playheadRunning != playheadWasRunning || playheadRunning;
+    if (playheadRunning)
+    {
+        if (! playheadWasRunning)
+        {
+            animatedPlayheadPosition = 0.0f;
+        }
+        else
+        {
+            const double elapsed = juce::jmax(0.0, nowSeconds - playheadLastUpdateSeconds);
+            const double duration = juce::jmax(
+                1.0 / 30.0, static_cast<double>(processor.getContourDuration()));
+            animatedPlayheadPosition = static_cast<float>(
+                std::fmod(animatedPlayheadPosition + elapsed / duration, 1.0));
+        }
+    }
+    else
+    {
+        animatedPlayheadPosition = 0.0f;
+    }
+    playheadWasRunning = playheadRunning;
+    playheadLastUpdateSeconds = nowSeconds;
+
+    const int currentSmooth = juce::roundToInt(
+        processor.parameters().getRawParameterValue("smooth")->load());
+    const float currentAmount =
+        processor.parameters().getRawParameterValue("amount")->load();
+    if (currentSmooth != observedSmooth
+        || std::abs(currentAmount - observedAmount) > 1.0e-6f)
+    {
+        observedSmooth = currentSmooth;
+        observedAmount = currentAmount;
+        repaintNeeded = true;
+    }
+
     if (! isMouseButtonDown())
     {
         const auto revision = processor.getContourRevision();
@@ -412,9 +484,11 @@ void CurveEditor::timerCallback()
             editablePoints = processor.getContour();
             editablePointsAreUniform = false;
             observedRevision = revision;
+            repaintNeeded = true;
         }
     }
-    repaint();
+    if (repaintNeeded)
+        repaint();
 }
 
 AudioWaveformView::AudioWaveformView()
@@ -493,7 +567,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     fileName.setText("No Audio File", juce::dontSendNotification);
     fileName.setColour(juce::Label::textColourId, Palette::muted);
     fileName.setJustificationType(juce::Justification::centred);
-    fileName.setFont(juce::Font(juce::FontOptions(12.0f)));
+    fileName.setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
     secondsLabel.setText("SECOND", juce::dontSendNotification);
     framesLabel.setText("FRAME", juce::dontSendNotification);
     amountLabel.setText("AMOUNT", juce::dontSendNotification);

@@ -40,6 +40,7 @@ public:
     float getContourDuration() const;
     uint64_t getContourRevision() const noexcept { return contourRevision.load(); }
     float getPlayheadPosition() const noexcept { return displayPosition.load(); }
+    bool isPlayheadRunning() const noexcept { return displayPlaying.load(); }
     juce::AudioProcessorValueTreeState& parameters() noexcept { return state; }
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -55,6 +56,7 @@ private:
     };
 
     float curveValueAt(float position, const CurveData&) const;
+    float steppedCurveValueAt(float position, const CurveData&) const;
     float smoothedCurveValueAt(float position, const CurveData&, int smooth) const;
     void processBlockInternal(juce::AudioBuffer<float>&, bool forceBypass);
 
@@ -75,6 +77,7 @@ private:
     mutable std::mutex curveWriterMutex;
     std::atomic<uint64_t> contourRevision { 0 };
     std::atomic<float> displayPosition { 0.0f };
+    std::atomic<bool> displayPlaying { false };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ContourAudioProcessor)
 };

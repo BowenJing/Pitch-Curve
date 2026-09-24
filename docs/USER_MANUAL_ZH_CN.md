@@ -1,6 +1,6 @@
-# Pitch Curve 0.7.1 用户说明书
+# Pitch Curve 0.7.2 用户说明书
 
-适用版本：Pitch Curve 0.7.1
+适用版本：Pitch Curve 0.7.2
 文档语言：简体中文
 
 ## 1. 产品简介
@@ -49,7 +49,7 @@ Windows 在程序或 DAW 已加载插件时会锁定对应文件。如果没有�
 
 ### 3.2 安装步骤
 
-1. 运行 `Pitch-Curve-0.7.1-Windows-x64.exe`。
+1. 运行 `Pitch-Curve-0.7.2-Windows-x64.exe`。
 2. 根据 Windows 提示授予管理员权限。
 3. 完成安装。
 4. 重新打开 DAW，并执行一次插件重新扫描。
@@ -285,7 +285,7 @@ Pitch Curve 使用高质量频谱移调算法，因此会产生固定处理延�
 1. 关闭 DAW 和 Pitch Curve。
 2. 打开 Windows“设置”。
 3. 进入“应用”或“已安装的应用”。
-4. 找到 `Pitch Curve 0.7.1`。
+4. 找到 `Pitch Curve 0.7.2`。
 5. 点击“卸载”。
 
 卸载器会删除独立程序、VST3 和卸载注册信息。
@@ -314,7 +314,7 @@ Pitch Curve：
 
 ## 14. 版本要点
 
-Pitch Curve 0.7.1 包含：
+Pitch Curve 0.7.2 包含：
 
 - 更安全的实时曲线缓冲发布协议。
 - 受 60 秒与采样数量限制保护的波形预览。

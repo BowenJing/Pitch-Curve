@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "CurveSmoothing.h"
 
 #include <cmath>
 
@@ -33,6 +34,7 @@ void ContourAudioProcessor::prepareToPlay(double sampleRate, int maximumBlockSiz
     hostPlaybackSample = 0;
     hostWasPlaying = false;
     displayPosition.store(0.0f);
+    displayPlaying.store(false);
     stretcher.presetDefault(getTotalNumInputChannels(), sampleRate);
     stretcher.reset();
     setLatencySamples(stretcher.inputLatency() + stretcher.outputLatency());
@@ -81,27 +83,33 @@ float ContourAudioProcessor::curveValueAt(float position,
     return juce::jmap(proportion, lower->cents, upper->cents);
 }
 
+float ContourAudioProcessor::steppedCurveValueAt(float position,
+                                                 const CurveData& curve) const
+{
+    if (curve.pointCount == 0)
+        return 0.0f;
+    const auto begin = curve.points.begin();
+    const auto end = begin + static_cast<std::ptrdiff_t>(curve.pointCount);
+    const auto upper = std::upper_bound(
+        begin, end, position,
+        [] (float value, const PitchPoint& point) { return value < point.position; });
+    return upper == begin ? begin->cents : (upper - 1)->cents;
+}
+
 float ContourAudioProcessor::smoothedCurveValueAt(float position,
                                                    const CurveData& curve,
                                                    int smooth) const
 {
-    if (smooth <= 0 || curve.pointCount < 3)
-        return curveValueAt(position, curve);
-
-    const float radius = 0.004f * static_cast<float>(smooth);
-    float weightedValue = 0.0f;
-    float totalWeight = 0.0f;
-    for (int offset = -smooth; offset <= smooth; ++offset)
-    {
-        const float proportion = static_cast<float>(offset) / static_cast<float>(smooth);
-        float wrappedPosition = position + proportion * radius;
-        wrappedPosition -= std::floor(wrappedPosition);
-        const float weight = static_cast<float>(smooth + 1 - std::abs(offset));
-        weightedValue += curveValueAt(wrappedPosition, curve) * weight;
-        totalWeight += weight;
-    }
-    return totalWeight > 0.0f ? weightedValue / totalWeight
-                              : curveValueAt(position, curve);
+    return PitchCurveSmoothing::valueAt(
+        position, smooth,
+        [this, &curve] (float samplePosition)
+        {
+            return curveValueAt(samplePosition, curve);
+        },
+        [this, &curve] (float samplePosition)
+        {
+            return steppedCurveValueAt(samplePosition, curve);
+        });
 }
 
 void ContourAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -172,6 +180,8 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
             timelineSample = stretcher.inputLatency();
         }
     }
+    displayPlaying.store(! hasHostTransport || ! transportStopped,
+                         std::memory_order_relaxed);
 
     const auto durationSamples = juce::jmax<int64_t>(
         1, static_cast<int64_t>(duration * currentSampleRate));

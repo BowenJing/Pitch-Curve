@@ -28,6 +28,12 @@ public:
         juce::TextEditor::mouseUp(event);
         selectAll();
     }
+
+    void focusLost(FocusChangeType cause) override
+    {
+        juce::TextEditor::focusLost(cause);
+        setHighlightedRegion({ 0, 0 });
+    }
 };
 
 class CurveEditor final : public juce::Component,
@@ -49,6 +55,8 @@ private:
     float centsFromY(float) const;
     float yFromCents(float) const;
     float displayRangeSemitones() const;
+    float linearCentsAt(float) const;
+    float steppedCentsAt(float) const;
     float displayCentsAt(float) const;
 
     ContourAudioProcessor& processor;
@@ -56,6 +64,11 @@ private:
     std::optional<juce::Point<float>> previousDrawPosition;
     uint64_t observedRevision = 0;
     bool editablePointsAreUniform = false;
+    bool playheadWasRunning = false;
+    double playheadLastUpdateSeconds = 0.0;
+    float animatedPlayheadPosition = 0.0f;
+    int observedSmooth = -1;
+    float observedAmount = -1.0f;
 };
 
 class AudioWaveformView final : public juce::Component,

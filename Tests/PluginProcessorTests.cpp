@@ -1,5 +1,6 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "CurveSmoothing.h"
 
 #include <atomic>
 #include <cmath>
@@ -206,6 +207,11 @@ bool testStoppedTransportResetsDisplay()
         std::cerr << "Unavailable initial host position must hold the curve at its start\n";
         return false;
     }
+    if (processor.isPlayheadRunning())
+    {
+        std::cerr << "Unavailable host position must mark the playhead as stopped\n";
+        return false;
+    }
 
     playHead.positionAvailable = true;
     playHead.position.setIsPlaying(true);
@@ -214,6 +220,11 @@ bool testStoppedTransportResetsDisplay()
     if (processor.getPlayheadPosition() > 0.01f)
     {
         std::cerr << "New playback must begin at the start of the curve\n";
+        return false;
+    }
+    if (! processor.isPlayheadRunning())
+    {
+        std::cerr << "Playing transport must mark the playhead as running\n";
         return false;
     }
 
@@ -232,6 +243,11 @@ bool testStoppedTransportResetsDisplay()
         std::cerr << "Stopped transport must reset the curve display\n";
         return false;
     }
+    if (processor.isPlayheadRunning())
+    {
+        std::cerr << "Stopped transport must mark the playhead as stopped\n";
+        return false;
+    }
 
     playHead.position.setIsPlaying(true);
     playHead.position.setTimeInSamples(960000);
@@ -240,6 +256,62 @@ bool testStoppedTransportResetsDisplay()
     {
         std::cerr << "Restarted transport must restart the curve from its beginning\n";
         return false;
+    }
+    return true;
+}
+
+bool testSmoothScaleEndpoints()
+{
+    const auto linearValueAt = [] (float position)
+    {
+        return position * 100.0f;
+    };
+    const auto steppedValueAt = [] (float position)
+    {
+        return position < 0.5f ? -100.0f : 100.0f;
+    };
+
+    const float position = 0.49f;
+    const float hardValue = PitchCurveSmoothing::valueAt(
+        position, 0, linearValueAt, steppedValueAt);
+    if (std::abs(hardValue + 100.0f) > 1.0e-6f)
+    {
+        std::cerr << "Smooth 0 must use the stepped curve exactly\n";
+        return false;
+    }
+
+    float weightedValue = 0.0f;
+    float totalWeight = 0.0f;
+    constexpr int maximumSmooth = 10;
+    constexpr float radius = 0.004f * maximumSmooth;
+    for (int offset = -maximumSmooth; offset <= maximumSmooth; ++offset)
+    {
+        float wrapped = position
+                      + static_cast<float>(offset) / maximumSmooth * radius;
+        wrapped -= std::floor(wrapped);
+        const float weight =
+            static_cast<float>(maximumSmooth + 1 - std::abs(offset));
+        weightedValue += linearValueAt(wrapped) * weight;
+        totalWeight += weight;
+    }
+    const float expectedMaximum = weightedValue / totalWeight;
+    const float maximumValue = PitchCurveSmoothing::valueAt(
+        position, maximumSmooth, linearValueAt, steppedValueAt);
+    if (std::abs(maximumValue - expectedMaximum) > 1.0e-6f)
+    {
+        std::cerr << "Smooth 10 must preserve the established rounded result\n";
+        return false;
+    }
+
+    for (int smooth = 1; smooth < maximumSmooth; ++smooth)
+    {
+        const float value = PitchCurveSmoothing::valueAt(
+            position, smooth, linearValueAt, steppedValueAt);
+        if (! std::isfinite(value))
+        {
+            std::cerr << "Intermediate smooth level produced a non-finite value\n";
+            return false;
+        }
     }
     return true;
 }
@@ -295,6 +367,7 @@ int main()
         || ! testContourWithOversizedBlocks()
         || ! testStateRoundTripAndBounds()
         || ! testStoppedTransportResetsDisplay()
+        || ! testSmoothScaleEndpoints()
         || ! testConcurrentCurvePublication())
         return 1;
 
