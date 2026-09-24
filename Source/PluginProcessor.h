@@ -71,7 +71,7 @@ private:
 
     std::array<CurveData, 3> curveBuffers {};
     std::atomic<int> publishedCurveIndex { 0 };
-    std::atomic<int> audioReadingCurveIndex { -1 };
+    std::array<std::atomic<int>, 3> curveSlotState {};
     mutable std::mutex curveWriterMutex;
     std::atomic<uint64_t> contourRevision { 0 };
     std::atomic<float> displayPosition { 0.0f };

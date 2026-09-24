@@ -9,6 +9,8 @@ ContourAudioProcessor::ContourAudioProcessor()
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       state(*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    for (auto& slot : curveSlotState)
+        slot.store(0, std::memory_order_relaxed);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout ContourAudioProcessor::createParameterLayout()
@@ -123,12 +125,14 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
         buffer.clear(channel, 0, samples);
 
     int curveIndex = 0;
-    do
+    for (;;)
     {
         curveIndex = publishedCurveIndex.load(std::memory_order_acquire);
-        audioReadingCurveIndex.store(curveIndex, std::memory_order_release);
+        int expected = 0;
+        if (curveSlotState[static_cast<size_t>(curveIndex)].compare_exchange_weak(
+                expected, 1, std::memory_order_acquire, std::memory_order_relaxed))
+            break;
     }
-    while (curveIndex != publishedCurveIndex.load(std::memory_order_acquire));
     const auto& curve = curveBuffers[static_cast<size_t>(curveIndex)];
     const float duration = curve.durationSeconds;
     const float amount = state.getRawParameterValue("amount")->load();
@@ -213,7 +217,7 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
             }
         }
     }
-    audioReadingCurveIndex.store(-1, std::memory_order_release);
+    curveSlotState[static_cast<size_t>(curveIndex)].store(0, std::memory_order_release);
     if (hasHostTransport)
     {
         if (! transportStopped)
@@ -275,16 +279,31 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
 
     std::lock_guard<std::mutex> lock(curveWriterMutex);
     const int published = publishedCurveIndex.load(std::memory_order_acquire);
-    const int reading = audioReadingCurveIndex.load(std::memory_order_acquire);
-    int target = 0;
-    while (target == published || target == reading)
-        ++target;
+    int target = -1;
+    while (target < 0)
+    {
+        for (int candidate = 0; candidate < static_cast<int>(curveBuffers.size()); ++candidate)
+        {
+            if (candidate == published)
+                continue;
+            int expected = 0;
+            if (curveSlotState[static_cast<size_t>(candidate)].compare_exchange_strong(
+                    expected, -1, std::memory_order_acq_rel, std::memory_order_relaxed))
+            {
+                target = candidate;
+                break;
+            }
+        }
+        if (target < 0)
+            juce::Thread::yield();
+    }
 
     auto& updated = curveBuffers[static_cast<size_t>(target)];
     updated.pointCount = points.size();
     std::copy(points.begin(), points.end(), updated.points.begin());
     updated.durationSeconds = juce::jlimit(1.0f / 30.0f, 600.0f, durationSeconds);
     publishedCurveIndex.store(target, std::memory_order_release);
+    curveSlotState[static_cast<size_t>(target)].store(0, std::memory_order_release);
     contourRevision.fetch_add(1);
 }
 
@@ -307,10 +326,19 @@ float ContourAudioProcessor::getContourDuration() const
 void ContourAudioProcessor::getStateInformation(juce::MemoryBlock& destination)
 {
     auto root = state.copyState();
-    juce::ValueTree curve("CONTOUR");
-    curve.setProperty("duration", getContourDuration(), nullptr);
-    for (const auto& point : getContour())
+    CurveData snapshot;
     {
+        std::lock_guard<std::mutex> lock(curveWriterMutex);
+        snapshot = curveBuffers[static_cast<size_t>(
+            publishedCurveIndex.load(std::memory_order_acquire))];
+    }
+
+    juce::ValueTree curve("CONTOUR");
+    curve.setProperty("schema", 2, nullptr);
+    curve.setProperty("duration", snapshot.durationSeconds, nullptr);
+    for (size_t i = 0; i < snapshot.pointCount; ++i)
+    {
+        const auto& point = snapshot.points[i];
         juce::ValueTree node("POINT");
         node.setProperty("x", point.position, nullptr);
         node.setProperty("cents", point.cents, nullptr);
@@ -346,6 +374,16 @@ void ContourAudioProcessor::setStateInformation(const void* data, int size)
                 const auto node = curve.getChild(i);
                 if (node.hasType("POINT"))
                     restored.push_back({ node["x"], node["cents"], node["confidence"] });
+            }
+            if (static_cast<int>(curve.getProperty("schema", 0)) < 2)
+            {
+                float maximumAbsoluteCents = 0.0f;
+                for (const auto& point : restored)
+                    maximumAbsoluteCents =
+                        juce::jmax(maximumAbsoluteCents, std::abs(point.cents));
+                if (maximumAbsoluteCents > 600.0f)
+                    for (auto& point : restored)
+                        point.cents *= 0.5f;
             }
             setContour(std::move(restored), curve.getProperty("duration", 2.0f));
         }

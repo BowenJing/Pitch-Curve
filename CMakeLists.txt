@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(Contour
-    VERSION 0.7.0
+    VERSION 0.7.1
     DESCRIPTION "Learn and transfer expressive pitch contours"
     LANGUAGES C CXX)
 
@@ -206,6 +206,7 @@ set(CPACK_INSTALL_CMAKE_PROJECTS
 
 if(APPLE)
     set(CPACK_GENERATOR "productbuild")
+    set(CPACK_PACKAGE_FILE_NAME "Pitch-Curve-${PROJECT_VERSION}-macOS-Universal")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/")
     set(CPACK_PRODUCTBUILD_IDENTIFIER "audio.circus.pitchcurve.installer")
 elseif(WIN32)
@@ -249,8 +250,13 @@ RMDir /r \"$COMMONFILES64\\VST3\\Contour.vst3\"
 ]=])
 else()
     set(CPACK_GENERATOR "DEB;TGZ")
+    set(CPACK_PACKAGE_FILE_NAME
+        "Pitch-Curve-${PROJECT_VERSION}-Linux-${CMAKE_SYSTEM_PROCESSOR}")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Circus Audio")
+    set(CPACK_DEBIAN_PACKAGE_NAME "pitch-curve")
+    set(CPACK_DEBIAN_PACKAGE_CONFLICTS "pitchtransform, contour")
+    set(CPACK_DEBIAN_PACKAGE_REPLACES "pitchtransform, contour")
     set(CPACK_DEBIAN_PACKAGE_SECTION "sound")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 endif()

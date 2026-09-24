@@ -1,8 +1,10 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
+#include <atomic>
 #include <cmath>
 #include <iostream>
+#include <thread>
 #include <vector>
 
 namespace
@@ -241,6 +243,49 @@ bool testStoppedTransportResetsDisplay()
     }
     return true;
 }
+
+bool testConcurrentCurvePublication()
+{
+    ContourAudioProcessor processor;
+    processor.prepareToPlay(48000.0, 64);
+    std::atomic<bool> failed { false };
+    std::thread audioThread([&]
+    {
+        juce::MidiBuffer midi;
+        for (int blockIndex = 0; blockIndex < 1000; ++blockIndex)
+        {
+            juce::AudioBuffer<float> block(2, 64);
+            block.clear();
+            processor.processBlock(block, midi);
+            for (int channel = 0; channel < block.getNumChannels(); ++channel)
+                for (int sample = 0; sample < block.getNumSamples(); ++sample)
+                    if (! std::isfinite(block.getSample(channel, sample)))
+                        failed.store(true);
+        }
+    });
+
+    for (int revision = 0; revision < 1000; ++revision)
+    {
+        std::vector<PitchPoint> points;
+        const int pointCount = 2 + revision % 63;
+        points.reserve(static_cast<size_t>(pointCount));
+        for (int i = 0; i < pointCount; ++i)
+            points.push_back({
+                static_cast<float>(i) / static_cast<float>(pointCount - 1),
+                static_cast<float>((revision + i) % 1200 - 600),
+                1.0f
+            });
+        processor.setContour(std::move(points), 0.5f + 0.01f * (revision % 100));
+    }
+
+    audioThread.join();
+    if (failed.load())
+    {
+        std::cerr << "Concurrent curve publication produced invalid audio\n";
+        return false;
+    }
+    return true;
+}
 }
 
 int main()
@@ -249,7 +294,8 @@ int main()
     if (! testLatencyMatchedBypass()
         || ! testContourWithOversizedBlocks()
         || ! testStateRoundTripAndBounds()
-        || ! testStoppedTransportResetsDisplay())
+        || ! testStoppedTransportResetsDisplay()
+        || ! testConcurrentCurvePublication())
         return 1;
 
     std::cout << "Processor safety tests passed\n";

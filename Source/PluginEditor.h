@@ -22,6 +22,12 @@ public:
         juce::TextEditor::mouseDown(event);
         selectAll();
     }
+
+    void mouseUp(const juce::MouseEvent& event) override
+    {
+        juce::TextEditor::mouseUp(event);
+        selectAll();
+    }
 };
 
 class CurveEditor final : public juce::Component,
@@ -57,7 +63,7 @@ class AudioWaveformView final : public juce::Component,
 {
 public:
     AudioWaveformView();
-    void setFile(const juce::File&);
+    bool setFile(const juce::File&);
     void clear();
     void paint(juce::Graphics&) override;
 
@@ -71,7 +77,8 @@ private:
 
 class ContourAudioProcessorEditor final : public juce::AudioProcessorEditor,
                                           public juce::FileDragAndDropTarget,
-                                          private juce::Thread
+                                          private juce::Thread,
+                                          private juce::Timer
 {
 public:
     explicit ContourAudioProcessorEditor(ContourAudioProcessor&);
@@ -84,6 +91,7 @@ public:
 
 private:
     void run() override;
+    void timerCallback() override;
     void chooseFile();
     void beginLearning();
     void setSelectedFile(const juce::File&);
@@ -121,6 +129,11 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> amountAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> smoothAttachment;
     std::atomic<bool> analysing { false };
+    uint64_t observedProcessorRevision = 0;
+    bool secondsDirty = false;
+    bool framesDirty = false;
+    bool amountDirty = false;
+    bool smoothDirty = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ContourAudioProcessorEditor)
 };

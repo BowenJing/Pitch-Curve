@@ -10,6 +10,52 @@ const auto muted = juce::Colour::fromRGB(161, 171, 182);
 const auto accent = juce::Colour::fromRGB(126, 211, 177);
 }
 
+namespace
+{
+class LimitedAudioFormatReader final : public juce::AudioFormatReader
+{
+public:
+    LimitedAudioFormatReader(std::unique_ptr<juce::AudioFormatReader> sourceReader,
+                             int64_t maximumSamples)
+        : juce::AudioFormatReader(nullptr, sourceReader->getFormatName()),
+          source(std::move(sourceReader))
+    {
+        sampleRate = source->sampleRate;
+        bitsPerSample = source->bitsPerSample;
+        lengthInSamples = juce::jmin(source->lengthInSamples, maximumSamples);
+        numChannels = juce::jmin(2u, source->numChannels);
+        usesFloatingPointData = source->usesFloatingPointData;
+    }
+
+    bool readSamples(int* const* destination, int destinationChannels,
+                     int destinationOffset, int64_t sourceStart,
+                     int samples) override
+    {
+        if (sourceStart >= lengthInSamples)
+        {
+            for (int channel = 0; channel < destinationChannels; ++channel)
+                if (destination[channel] != nullptr)
+                    juce::zeromem(destination[channel] + destinationOffset,
+                                  static_cast<size_t>(samples) * sizeof(int));
+            return true;
+        }
+        const auto available = static_cast<int>(
+            juce::jmin<int64_t>(samples, lengthInSamples - sourceStart));
+        const bool succeeded =
+            source->readSamples(destination, destinationChannels, destinationOffset,
+                                sourceStart, available);
+        for (int channel = 0; channel < destinationChannels; ++channel)
+            if (destination[channel] != nullptr && available < samples)
+                juce::zeromem(destination[channel] + destinationOffset + available,
+                              static_cast<size_t>(samples - available) * sizeof(int));
+        return succeeded;
+    }
+
+private:
+    std::unique_ptr<juce::AudioFormatReader> source;
+};
+}
+
 ContourLookAndFeel::ContourLookAndFeel()
 {
     setColour(juce::Label::textColourId, Palette::text);
@@ -378,10 +424,28 @@ AudioWaveformView::AudioWaveformView()
     setInterceptsMouseClicks(false, false);
 }
 
-void AudioWaveformView::setFile(const juce::File& file)
+bool AudioWaveformView::setFile(const juce::File& file)
 {
-    thumbnail.setSource(new juce::FileInputSource(file));
+    constexpr int64_t maximumFileBytes = 1024LL * 1024LL * 1024LL;
+    constexpr int64_t maximumDecodedSamples = 12000000;
+    constexpr double maximumLengthSeconds = 60.0;
+    if (! file.existsAsFile() || file.getSize() <= 0 || file.getSize() > maximumFileBytes)
+        return false;
+
+    std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
+    if (reader == nullptr || ! std::isfinite(reader->sampleRate)
+        || reader->sampleRate < 8000.0 || reader->sampleRate > 768000.0
+        || reader->lengthInSamples <= 0 || reader->numChannels == 0)
+        return false;
+
+    const auto maximumSamples = juce::jmin<int64_t>(
+        maximumDecodedSamples,
+        static_cast<int64_t>(reader->sampleRate * maximumLengthSeconds));
+    thumbnail.setReader(
+        new LimitedAudioFormatReader(std::move(reader), maximumSamples),
+        file.getFullPathName().hashCode64());
     repaint();
+    return true;
 }
 
 void AudioWaveformView::clear()
@@ -458,20 +522,41 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     {
         editor->setInputRestrictions(4, "0123456789");
         editor->onReturnKey = [this] { applyDurationTimecode(); };
-        editor->onFocusLost = [this] { applyDurationTimecode(); };
+        editor->onFocusLost = [this]
+        {
+            if (secondsDirty || framesDirty)
+                applyDurationTimecode();
+        };
     }
+    secondsEditor.onTextChange = [this] { secondsDirty = true; };
+    framesEditor.onTextChange = [this] { framesDirty = true; };
     amountEditor.setInputRestrictions(3, "0123456789");
     amountEditor.onReturnKey = [this] { applyAmountText(); };
-    amountEditor.onFocusLost = [this] { applyAmountText(); };
+    amountEditor.onFocusLost = [this]
+    {
+        if (amountDirty)
+            applyAmountText();
+    };
+    amountEditor.onTextChange = [this] { amountDirty = true; };
     smoothEditor.setInputRestrictions(2, "0123456789");
     smoothEditor.onReturnKey = [this] { applySmoothText(); };
-    smoothEditor.onFocusLost = [this] { applySmoothText(); };
+    smoothEditor.onFocusLost = [this]
+    {
+        if (smoothDirty)
+            applySmoothText();
+    };
+    smoothEditor.onTextChange = [this] { smoothDirty = true; };
 
     timeKnob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     timeKnob.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     timeKnob.setRange(1.0, 600.0 * 30.0, 1.0);
     timeKnob.setSkewFactorFromMidPoint(300.0);
     timeKnob.setMouseClickGrabsKeyboardFocus(true);
+    timeKnob.onDragStart = [this]
+    {
+        if (secondsDirty || framesDirty)
+            applyDurationTimecode();
+    };
     timeKnob.onValueChange = [this]
     {
         const int totalFrames = juce::roundToInt(timeKnob.getValue());
@@ -496,7 +581,16 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     amount.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     amount.setDoubleClickReturnValue(true, 1.0);
     amount.setMouseClickGrabsKeyboardFocus(true);
-    amount.onValueChange = [this] { updateAmountText(); };
+    amount.onDragStart = [this]
+    {
+        if (amountDirty)
+            applyAmountText();
+    };
+    amount.onValueChange = [this]
+    {
+        if (! amountDirty)
+            updateAmountText();
+    };
     amountAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processor.parameters(), "amount", amount);
     updateAmountText();
@@ -505,7 +599,16 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     smooth.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     smooth.setRange(0.0, 10.0, 1.0);
     smooth.setMouseClickGrabsKeyboardFocus(true);
-    smooth.onValueChange = [this] { updateSmoothText(); };
+    smooth.onDragStart = [this]
+    {
+        if (smoothDirty)
+            applySmoothText();
+    };
+    smooth.onValueChange = [this]
+    {
+        if (! smoothDirty)
+            updateSmoothText();
+    };
     smoothAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processor.parameters(), "smooth", smooth);
     updateSmoothText();
@@ -519,12 +622,15 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
              &amountEditor, &smoothEditor, &timeKnob, &amountLabel, &amount,
              &smoothLabel, &smooth, &curveEditor })
         addAndMakeVisible(component);
+
+    observedProcessorRevision = processor.getContourRevision();
+    startTimerHz(10);
 }
 
 ContourAudioProcessorEditor::~ContourAudioProcessorEditor()
 {
     signalThreadShouldExit();
-    stopThread(10000);
+    stopThread(-1);
     setLookAndFeel(nullptr);
 }
 
@@ -625,7 +731,7 @@ void ContourAudioProcessorEditor::resized()
 
 bool ContourAudioProcessorEditor::isInterestedInFileDrag(const juce::StringArray& files)
 {
-    if (files.isEmpty())
+    if (analysing.load() || files.isEmpty())
         return false;
     const auto extension = juce::File(files[0]).getFileExtension().toLowerCase();
     return extension == ".wav" || extension == ".aif" || extension == ".aiff"
@@ -651,6 +757,8 @@ void ContourAudioProcessorEditor::applyDurationTimecode()
 
     const float duration = static_cast<float>(totalFrames)
                          / static_cast<float>(framesPerSecond);
+    secondsDirty = false;
+    framesDirty = false;
     processor.setContour(processor.getContour(), duration);
     timeKnob.setValue(totalFrames, juce::dontSendNotification);
     updateDurationTimecode();
@@ -669,9 +777,9 @@ void ContourAudioProcessorEditor::updateDurationTimecode()
         juce::roundToInt(processor.getContourDuration() * framesPerSecond));
     const auto secondsText = juce::String(totalFrames / framesPerSecond);
     const auto framesText = juce::String(totalFrames % framesPerSecond);
-    if (secondsEditor.getText() != secondsText)
+    if (! secondsDirty && secondsEditor.getText() != secondsText)
         secondsEditor.setText(secondsText, false);
-    if (framesEditor.getText() != framesText)
+    if (! framesDirty && framesEditor.getText() != framesText)
         framesEditor.setText(framesText, false);
     timeKnob.setValue(totalFrames, juce::dontSendNotification);
 }
@@ -679,6 +787,7 @@ void ContourAudioProcessorEditor::updateDurationTimecode()
 void ContourAudioProcessorEditor::applyAmountText()
 {
     const int percentage = juce::jlimit(0, 200, amountEditor.getText().getIntValue());
+    amountDirty = false;
     amount.setValue(static_cast<double>(percentage) / 100.0,
                     juce::sendNotificationSync);
     updateAmountText();
@@ -687,13 +796,14 @@ void ContourAudioProcessorEditor::applyAmountText()
 void ContourAudioProcessorEditor::updateAmountText()
 {
     const auto text = juce::String(juce::roundToInt(amount.getValue() * 100.0));
-    if (amountEditor.getText() != text)
+    if (! amountDirty && amountEditor.getText() != text)
         amountEditor.setText(text, false);
 }
 
 void ContourAudioProcessorEditor::applySmoothText()
 {
     const int value = juce::jlimit(0, 10, smoothEditor.getText().getIntValue());
+    smoothDirty = false;
     smooth.setValue(value, juce::sendNotificationSync);
     updateSmoothText();
 }
@@ -701,8 +811,18 @@ void ContourAudioProcessorEditor::applySmoothText()
 void ContourAudioProcessorEditor::updateSmoothText()
 {
     const auto text = juce::String(juce::roundToInt(smooth.getValue()));
-    if (smoothEditor.getText() != text)
+    if (! smoothDirty && smoothEditor.getText() != text)
         smoothEditor.setText(text, false);
+}
+
+void ContourAudioProcessorEditor::timerCallback()
+{
+    const auto revision = processor.getContourRevision();
+    if (revision != observedProcessorRevision)
+    {
+        observedProcessorRevision = revision;
+        updateDurationTimecode();
+    }
 }
 
 void ContourAudioProcessorEditor::chooseFile()
@@ -716,16 +836,30 @@ void ContourAudioProcessorEditor::chooseFile()
         [safe = juce::Component::SafePointer<ContourAudioProcessorEditor>(this)]
         (const juce::FileChooser& fc)
     {
-        if (safe != nullptr && fc.getResult().existsAsFile())
+        if (safe != nullptr && ! safe->analysing.load()
+            && fc.getResult().existsAsFile())
             safe->setSelectedFile(fc.getResult());
     });
 }
 
 void ContourAudioProcessorEditor::setSelectedFile(const juce::File& file)
 {
+    if (analysing.load())
+        return;
+
+    if (! waveform.setFile(file))
+    {
+        selectedFile = {};
+        waveform.clear();
+        fileName.setText("No Audio File", juce::dontSendNotification);
+        status.setText("Unsupported or unsafe audio file", juce::dontSendNotification);
+        learnButton.setEnabled(false);
+        resized();
+        return;
+    }
+
     selectedFile = file;
     fileName.setText(file.getFileName(), juce::dontSendNotification);
-    waveform.setFile(file);
     status.setText("Ready to analyse", juce::dontSendNotification);
     learnButton.setEnabled(true);
     resized();
@@ -739,7 +873,13 @@ void ContourAudioProcessorEditor::beginLearning()
     status.setText("Listening for pitch movement...", juce::dontSendNotification);
     learnButton.setEnabled(false);
     fileButton.setEnabled(false);
-    startThread();
+    if (! startThread())
+    {
+        analysing.store(false);
+        learnButton.setEnabled(true);
+        fileButton.setEnabled(true);
+        status.setText("Could not start audio analysis", juce::dontSendNotification);
+    }
 }
 
 void ContourAudioProcessorEditor::run()

@@ -6,7 +6,7 @@
 namespace
 {
 constexpr int frameSize = 2048;
-constexpr int hopSize = 256;
+constexpr int hopSize = 512;
 constexpr double maximumAnalysisSampleRate = 48000.0;
 
 float median(std::vector<float> values)
@@ -63,11 +63,12 @@ std::pair<float, float> PitchDetector::detectFrame(const float* samples,
                                                     float minimumHz,
                                                     float maximumHz)
 {
-    const int minimumLag = juce::jmax(2, static_cast<int>(sampleRate / maximumHz));
+    const int minimumLag = juce::jmax(2, static_cast<int>(std::ceil(sampleRate / maximumHz)));
     const int maximumLag = juce::jmin(size / 2, static_cast<int>(sampleRate / minimumHz));
     if (minimumLag > maximumLag)
         return {};
-    std::vector<float> difference(static_cast<size_t>(maximumLag + 1), 0.0f);
+    thread_local std::vector<float> difference;
+    difference.assign(static_cast<size_t>(maximumLag + 1), 0.0f);
 
     double energy = 0.0;
     for (int i = 0; i < size; ++i)
@@ -139,6 +140,7 @@ std::pair<float, float> PitchDetector::detectFrame(const float* samples,
     const float frequency = static_cast<float>(sampleRate) / refinedLag;
     const float confidence = juce::jlimit(0.0f, 1.0f, 1.0f - selectedValue);
     return std::isfinite(frequency) && std::isfinite(confidence)
+               && frequency >= minimumHz && frequency <= maximumHz
         ? std::pair<float, float> { frequency, confidence }
         : std::pair<float, float> {};
 }
@@ -158,11 +160,19 @@ PitchAnalysis PitchDetector::analyse(const juce::AudioBuffer<float>& audio,
 
     result.durationSeconds = static_cast<float>(audio.getNumSamples() / sampleRate);
 
-    juce::AudioBuffer<float> mono(1, audio.getNumSamples());
-    mono.clear();
+    int analysisChannel = 0;
+    float greatestRms = -1.0f;
     for (int channel = 0; channel < audio.getNumChannels(); ++channel)
-        mono.addFrom(0, 0, audio, channel, 0, audio.getNumSamples(),
-                     1.0f / static_cast<float>(audio.getNumChannels()));
+    {
+        const float rms = audio.getRMSLevel(channel, 0, audio.getNumSamples());
+        if (rms > greatestRms)
+        {
+            greatestRms = rms;
+            analysisChannel = channel;
+        }
+    }
+    juce::AudioBuffer<float> mono(1, audio.getNumSamples());
+    mono.copyFrom(0, 0, audio, analysisChannel, 0, audio.getNumSamples());
 
     juce::AudioBuffer<float> downsampled;
     const juce::AudioBuffer<float>* analysisAudio = &mono;

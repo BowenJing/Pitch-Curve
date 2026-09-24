@@ -26,10 +26,11 @@ jobs:
       - run: cpack --config build/CPackConfig.cmake -G DEB
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: contour-linux-x64
+          name: pitch-curve-linux-x64
           path: |
-            Contour-*.deb
-            Contour-*.sha256
+            Pitch-Curve-*.deb
+            Pitch-Curve-*.sha256
+          if-no-files-found: error
 
   macos:
     runs-on: macos-15
@@ -43,10 +44,11 @@ jobs:
       - run: cpack --config build/CPackConfig.cmake -C Release -G productbuild
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: contour-macos-universal
+          name: pitch-curve-macos-universal
           path: |
-            Contour-*.pkg
-            Contour-*.sha256
+            Pitch-Curve-*.pkg
+            Pitch-Curve-*.sha256
+          if-no-files-found: error
 
   windows:
     strategy:
@@ -65,7 +67,8 @@ jobs:
       - run: cpack --config build/CPackConfig.cmake -C Release -G NSIS
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: contour-windows-${{ matrix.architecture }}
+          name: pitch-curve-windows-${{ matrix.architecture }}
           path: |
-            Contour-*.exe
-            Contour-*.sha256
+            Pitch-Curve-*.exe
+            Pitch-Curve-*.sha256
+          if-no-files-found: error
