@@ -199,6 +199,26 @@ bool testDefaultsAndDurationLimit()
         return false;
     }
 
+    processor.setContour({ { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f, 1.0f } }, 2.0f);
+    processor.setDurationLocked(true);
+    const float lockedDuration = processor.setLearnedContour(
+        { { 0.0f, -40.0f, 1.0f }, { 1.0f, 40.0f, 1.0f } }, 8.0f);
+    if (std::abs(lockedDuration - 2.0f) > 1.0e-6f
+        || std::abs(processor.getContourDuration() - 2.0f) > 1.0e-6f)
+    {
+        std::cerr << "Learning must preserve a locked curve duration\n";
+        return false;
+    }
+
+    processor.setDurationLocked(false);
+    const float unlockedDuration = processor.setLearnedContour(
+        { { 0.0f, -20.0f, 1.0f }, { 1.0f, 20.0f, 1.0f } }, 8.0f);
+    if (std::abs(unlockedDuration - 8.0f) > 1.0e-6f)
+    {
+        std::cerr << "Learning must update an unlocked curve duration\n";
+        return false;
+    }
+
     processor.setContour({ { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f, 1.0f } },
                          600.0f);
     if (std::abs(processor.getContourDuration() - 60.0f) > 1.0e-6f)

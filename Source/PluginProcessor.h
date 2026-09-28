@@ -36,6 +36,7 @@ public:
     void setStateInformation(const void*, int) override;
 
     void setContour(std::vector<PitchPoint> points, float durationSeconds);
+    float setLearnedContour(std::vector<PitchPoint> points, float detectedDurationSeconds);
     std::vector<PitchPoint> getContour() const;
     float getContourDuration() const;
     void setDurationLocked(bool locked) noexcept { durationLocked.store(locked); }

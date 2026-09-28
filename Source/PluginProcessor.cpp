@@ -298,6 +298,16 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
     contourRevision.fetch_add(1);
 }
 
+float ContourAudioProcessor::setLearnedContour(std::vector<PitchPoint> points,
+                                               float detectedDurationSeconds)
+{
+    const float appliedDuration = isDurationLocked()
+        ? getContourDuration()
+        : detectedDurationSeconds;
+    setContour(std::move(points), appliedDuration);
+    return getContourDuration();
+}
+
 std::vector<PitchPoint> ContourAudioProcessor::getContour() const
 {
     std::lock_guard<std::mutex> lock(curveWriterMutex);

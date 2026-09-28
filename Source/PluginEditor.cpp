@@ -1076,10 +1076,8 @@ void ContourAudioProcessorEditor::run()
             return;
         }
         const bool durationLocked = safe->processor.isDurationLocked();
-        const float appliedDuration = durationLocked
-            ? safe->processor.getContourDuration()
-            : result.durationSeconds;
-        safe->processor.setContour(std::move(result.points), appliedDuration);
+        const float appliedDuration = safe->processor.setLearnedContour(
+            std::move(result.points), result.durationSeconds);
         safe->updateDurationTimecode();
         safe->status.setText(juce::String(result.referenceHz, 1) + " Hz reference | "
                                  + juce::String(appliedDuration, 1) + " s contour"
