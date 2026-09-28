@@ -37,6 +37,13 @@ public:
     }
 };
 
+class DurationLockButton final : public juce::Button
+{
+public:
+    DurationLockButton();
+    void paintButton(juce::Graphics&, bool highlighted, bool down) override;
+};
+
 class CurveEditor final : public juce::Component,
                           private juce::Timer
 {
@@ -110,6 +117,7 @@ private:
     void setSelectedFile(const juce::File&);
     void applyDurationTimecode();
     void updateDurationTimecode();
+    void updateDurationLockControls();
     void applyAmountText();
     void updateAmountText();
     void applySmoothText();
@@ -134,6 +142,7 @@ private:
     NumericTextEditor amountEditor;
     NumericTextEditor smoothEditor;
     juce::Slider timeKnob;
+    DurationLockButton durationLock;
     juce::Slider amount;
     juce::Slider smooth;
     juce::File selectedFile;

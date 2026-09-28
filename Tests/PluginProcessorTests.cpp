@@ -144,6 +144,7 @@ bool testStateRoundTripAndBounds()
         amount->setValueNotifyingHost(amount->convertTo0to1(1.5f));
     if (auto* smooth = source.parameters().getParameter("smooth"))
         smooth->setValueNotifyingHost(smooth->convertTo0to1(10.0f));
+    source.setDurationLocked(true);
 
     juce::MemoryBlock state;
     source.getStateInformation(state);
@@ -155,6 +156,7 @@ bool testStateRoundTripAndBounds()
         || std::abs(restoredCurve.back().position - 1.0f) > 1.0e-6f
         || std::abs(restoredCurve.front().cents - restoredCurve.back().cents) > 1.0e-6f
         || std::abs(restored.getContourDuration() - 3.5f) > 1.0e-6f
+        || ! restored.isDurationLocked()
         || std::abs(restored.parameters().getRawParameterValue("smooth")->load() - 10.0f)
                > 1.0e-6f)
     {
@@ -189,10 +191,11 @@ bool testStateRoundTripAndBounds()
 bool testDefaultsAndDurationLimit()
 {
     ContourAudioProcessor processor;
-    if (std::abs(processor.parameters().getRawParameterValue("smooth")->load() - 5.0f)
+    if (processor.isDurationLocked()
+        || std::abs(processor.parameters().getRawParameterValue("smooth")->load() - 5.0f)
         > 1.0e-6f)
     {
-        std::cerr << "Smooth must default to 5\n";
+        std::cerr << "Smooth and duration lock defaults are incorrect\n";
         return false;
     }
 

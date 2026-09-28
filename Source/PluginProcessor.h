@@ -38,6 +38,8 @@ public:
     void setContour(std::vector<PitchPoint> points, float durationSeconds);
     std::vector<PitchPoint> getContour() const;
     float getContourDuration() const;
+    void setDurationLocked(bool locked) noexcept { durationLocked.store(locked); }
+    bool isDurationLocked() const noexcept { return durationLocked.load(); }
     uint64_t getContourRevision() const noexcept { return contourRevision.load(); }
     float getPlayheadPosition() const noexcept { return displayPosition.load(); }
     bool isPlayheadRunning() const noexcept { return displayPlaying.load(); }
@@ -74,6 +76,7 @@ private:
     std::array<std::atomic<int>, 3> curveSlotState {};
     mutable std::mutex curveWriterMutex;
     std::atomic<uint64_t> contourRevision { 0 };
+    std::atomic<bool> durationLocked { false };
     std::atomic<float> displayPosition { 0.0f };
     std::atomic<bool> displayPlaying { false };
 

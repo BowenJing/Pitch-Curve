@@ -327,6 +327,7 @@ void ContourAudioProcessor::getStateInformation(juce::MemoryBlock& destination)
     juce::ValueTree curve("CONTOUR");
     curve.setProperty("schema", 2, nullptr);
     curve.setProperty("duration", snapshot.durationSeconds, nullptr);
+    curve.setProperty("durationLocked", isDurationLocked(), nullptr);
     for (size_t i = 0; i < snapshot.pointCount; ++i)
     {
         const auto& point = snapshot.points[i];
@@ -357,6 +358,8 @@ void ContourAudioProcessor::setStateInformation(const void* data, int size)
 
         if (const auto curve = root.getChildWithName("CONTOUR"); curve.isValid())
         {
+            setDurationLocked(static_cast<bool>(
+                curve.getProperty("durationLocked", false)));
             std::vector<PitchPoint> restored;
             restored.reserve(static_cast<size_t>(
                 juce::jmin(curve.getNumChildren(), maximumStatePoints)));
