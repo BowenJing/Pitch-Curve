@@ -52,6 +52,9 @@ Installer commands and signing requirements are documented in
 [`docs/PACKAGING.md`](docs/PACKAGING.md). Runtime threat boundaries and the
 dependency review are documented in [`SECURITY.md`](SECURITY.md).
 
+On Linux, prefer the checked-in `linux-gcc-release` CMake preset. It pins GCC 13
+instead of relying on the machine-wide `c++` alternative.
+
 ### macOS
 
 Use current Xcode and CMake. The project requests a Universal Binary

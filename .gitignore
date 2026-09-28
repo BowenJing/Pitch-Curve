@@ -1,5 +1,6 @@
 /build/
 /build-gcc/
+/build-linux-gcc/
 /build-windows/
 /build-sanitize/
 /.xwin/

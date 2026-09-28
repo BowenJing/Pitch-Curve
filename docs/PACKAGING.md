@@ -5,11 +5,24 @@ Pitch Curve produces a native package for each platform.
 
 ## Linux
 
+Ubuntu 24.04 development dependencies:
+
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
-cpack --config build/CPackConfig.cmake -G DEB
+sudo apt-get update
+sudo apt-get install -y gcc-13 g++-13 cmake \
+  libasound2-dev libjack-jackd2-dev libx11-dev libxext-dev \
+  libxinerama-dev libxrandr-dev libxcursor-dev libfreetype-dev \
+  libfontconfig1-dev libgl1-mesa-dev
+```
+
+Use the checked-in preset so `/usr/bin/c++` alternatives cannot silently select
+an incomplete Clang/GCC combination:
+
+```bash
+cmake --preset linux-gcc-release
+cmake --build --preset linux-gcc-release
+ctest --preset linux-gcc-release
+cpack --config build-linux-gcc/CPackConfig.cmake -G DEB
 ```
 
 The `.deb` installs the VST3 bundle to `/usr/lib/vst3` and the standalone
