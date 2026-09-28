@@ -1,4 +1,5 @@
 /build/
+/build-gcc/
 /build-windows/
 /build-sanitize/
 /.xwin/
