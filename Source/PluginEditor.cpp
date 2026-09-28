@@ -146,7 +146,8 @@ void DurationLockButton::paintButton(juce::Graphics& g, bool highlighted, bool d
     }
 
     const auto centre = bounds.getCentre();
-    const auto iconColour = locked ? Palette::accent : Palette::muted;
+    const auto iconColour = locked ? Palette::accent
+                                   : Palette::muted.darker(0.12f);
     juce::Path shackle;
     shackle.startNewSubPath(centre.x - 5.0f, centre.y + 1.0f);
     shackle.lineTo(centre.x - 5.0f, centre.y - 3.0f);

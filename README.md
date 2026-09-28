@@ -26,8 +26,8 @@ directly in the editor.
 - Second and frame fields include a one-pixel baseline correction to match the
   Amount and Smooth fields at both supported window sizes.
 - The open-lock shackle ends cleanly at its gap; the icon is one pixel smaller
-  and two pixels lower. Locking changes only the icon, not the time controls'
-  appearance.
+  and two pixels lower. Its unlocked colour is subtly subdued. Locking changes
+  only the icon, not the time controls' appearance.
 - Unified button styling, enlarged learn area, consistent typography, and a
   comfortable slate/mint palette.
 - The curve playhead returns to the start whenever host playback stops and
