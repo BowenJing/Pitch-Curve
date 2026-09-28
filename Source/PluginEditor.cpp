@@ -158,7 +158,7 @@ void DurationLockButton::paintButton(juce::Graphics& g, bool highlighted, bool d
     if (locked)
         shackle.lineTo(centre.x + 5.0f, centre.y + 1.0f);
     else
-        shackle.lineTo(centre.x + 7.0f, centre.y - 3.0f);
+        shackle.lineTo(centre.x + 8.0f, centre.y - 6.0f);
     g.setColour(iconColour);
     g.strokePath(shackle, juce::PathStrokeType(
         1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
@@ -604,6 +604,8 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     for (auto* editor : { &secondsEditor, &framesEditor, &amountEditor, &smoothEditor })
     {
         editor->setJustification(juce::Justification::centred);
+        editor->setBorder(juce::BorderSize<int> {});
+        editor->setIndents(0, 0);
         editor->setSelectAllWhenFocused(true);
         editor->setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
         editor->setColour(juce::TextEditor::backgroundColourId, Palette::panelLight);
@@ -821,9 +823,10 @@ void ContourAudioProcessorEditor::resized()
                       + juce::jmax(0, (timeSection.getHeight() - timeGroupHeight) / 2);
     timeKnob.setBounds(timeSection.getCentreX() - ringSize / 2,
                        timeTop, ringSize, ringSize);
-    constexpr int lockSize = 28;
-    durationLock.setBounds(timeKnob.getBounds().withSizeKeepingCentre(
-        lockSize, lockSize));
+    constexpr int lockSize = 22;
+    durationLock.setBounds(timeKnob.getRight() - 5,
+                           timeKnob.getY() - 5,
+                           lockSize, lockSize);
     const int fieldsY = timeKnob.getBottom() + knobToFieldGap;
     const int timeFieldsWidth = fieldWidth * 2 + fieldGap;
     const int fieldsX = timeSection.getCentreX() - timeFieldsWidth / 2;
