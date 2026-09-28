@@ -615,6 +615,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     }
     for (auto* editor : { &secondsEditor, &framesEditor })
     {
+        editor->setIndents(0, 1);
         editor->setInputRestrictions(4, "0123456789");
         editor->onReturnKey = [this] { applyDurationTimecode(); };
         editor->onFocusLost = [this]
