@@ -104,24 +104,19 @@ void ContourLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w
 void ContourLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
                                                const juce::Colour&, bool highlighted, bool down)
 {
-    const bool primary = button.getComponentID() == "primary";
-    auto colour = primary && button.isEnabled() ? Palette::accent : Palette::panelLight;
+    auto colour = Palette::panelLight;
     if (highlighted)
         colour = colour.brighter(0.08f);
     if (down)
         colour = colour.darker(0.12f);
-    g.setColour(colour.withAlpha(button.isEnabled() ? 1.0f : 0.82f));
+    g.setColour(colour.withAlpha(button.isEnabled() ? 1.0f : 0.62f));
     g.fillRoundedRectangle(button.getLocalBounds().toFloat(), 8.0f);
 }
 
 void ContourLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button,
                                         bool, bool)
 {
-    const bool primary = button.getComponentID() == "primary";
-    const auto colour = primary && button.isEnabled()
-        ? Palette::background
-        : (button.isEnabled() ? Palette::text : Palette::muted);
-    g.setColour(colour);
+    g.setColour(Palette::text);
     g.setFont(getTextButtonFont(button, button.getHeight()));
     g.drawFittedText(button.getButtonText(), button.getLocalBounds().reduced(6, 0),
                      juce::Justification::centred, 1);
@@ -129,7 +124,7 @@ void ContourLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& but
 
 juce::Font ContourLookAndFeel::getTextButtonFont(juce::TextButton&, int)
 {
-    return juce::Font(juce::FontOptions(12.0f, juce::Font::bold));
+    return juce::Font(juce::FontOptions(13.0f, juce::Font::bold));
 }
 
 CurveEditor::CurveEditor(ContourAudioProcessor& owner) : processor(owner)
@@ -584,9 +579,9 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     status.setFont(juce::Font(juce::FontOptions(12.0f)));
     status.setJustificationType(juce::Justification::centredRight);
     fileName.setText("No Audio File", juce::dontSendNotification);
-    fileName.setColour(juce::Label::textColourId, Palette::muted);
+    fileName.setColour(juce::Label::textColourId, Palette::text);
     fileName.setJustificationType(juce::Justification::centred);
-    fileName.setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
+    fileName.setFont(juce::Font(juce::FontOptions(16.0f, juce::Font::bold)));
     secondsLabel.setText("SECOND", juce::dontSendNotification);
     framesLabel.setText("FRAME", juce::dontSendNotification);
     amountLabel.setText("AMOUNT", juce::dontSendNotification);
@@ -660,8 +655,6 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     updateDurationTimecode();
 
     fileButton.onClick = [this] { chooseFile(); };
-    learnButton.setComponentID("primary");
-    learnButton.setColour(juce::TextButton::textColourOffId, Palette::background);
     learnButton.setEnabled(false);
     learnButton.onClick = [this] { beginLearning(); };
     clearButton.onClick = [this]
@@ -730,7 +723,7 @@ ContourAudioProcessorEditor::~ContourAudioProcessorEditor()
 void ContourAudioProcessorEditor::paint(juce::Graphics& g)
 {
     g.fillAll(Palette::background);
-    auto dropArea = juce::Rectangle<float>(24.0f, 92.0f, getWidth() - 48.0f, 110.0f);
+    auto dropArea = juce::Rectangle<float>(24.0f, 88.0f, getWidth() - 48.0f, 126.0f);
     g.setColour(Palette::panel);
     g.fillRoundedRectangle(dropArea, 12.0f);
     g.setColour(Palette::muted.withAlpha(0.35f));
@@ -743,11 +736,11 @@ void ContourAudioProcessorEditor::resized()
     title.setBounds(margin, 27, 280, 34);
     status.setBounds(getWidth() - 330, 27, 306, 28);
 
-    auto drop = juce::Rectangle<int>(margin, 102, getWidth() - margin * 2, 90);
-    const auto fileButtonArea = drop.removeFromLeft(220);
-    const auto learnButtonArea = drop.removeFromRight(180);
-    fileButton.setBounds(fileButtonArea.withSizeKeepingCentre(fileButtonArea.getWidth(), 70));
-    learnButton.setBounds(learnButtonArea.withSizeKeepingCentre(learnButtonArea.getWidth(), 70));
+    auto drop = juce::Rectangle<int>(margin, 96, getWidth() - margin * 2, 110);
+    const auto fileButtonArea = drop.removeFromLeft(200);
+    const auto learnButtonArea = drop.removeFromRight(200);
+    fileButton.setBounds(fileButtonArea.withSizeKeepingCentre(fileButtonArea.getWidth(), 96));
+    learnButton.setBounds(learnButtonArea.withSizeKeepingCentre(learnButtonArea.getWidth(), 96));
     auto preview = drop.reduced(16, 2);
     if (selectedFile.existsAsFile())
     {
@@ -761,12 +754,12 @@ void ContourAudioProcessorEditor::resized()
     }
 
     const int controlWidth = 120;
-    auto content = juce::Rectangle<int>(margin, 222, getWidth() - margin * 2,
-                                        getHeight() - 246);
+    auto content = juce::Rectangle<int>(margin, 226, getWidth() - margin * 2,
+                                        getHeight() - 250);
     auto control = content.removeFromRight(controlWidth);
     curveEditor.setBounds(content.reduced(0, 0).withTrimmedRight(16));
 
-    const int clearHeight = 38;
+    const int clearHeight = 44;
     clearButton.setBounds(control.removeFromBottom(clearHeight));
     control.removeFromBottom(8);
     const int sectionHeight = control.getHeight() / 3;
@@ -941,6 +934,7 @@ void ContourAudioProcessorEditor::setSelectedFile(const juce::File& file)
         selectedFile = juce::File {};
         waveform.clear();
         fileName.setText("No Audio File", juce::dontSendNotification);
+        fileName.setFont(juce::Font(juce::FontOptions(16.0f, juce::Font::bold)));
         status.setText("Unsupported or unsafe audio file", juce::dontSendNotification);
         learnButton.setEnabled(false);
         resized();
@@ -949,6 +943,7 @@ void ContourAudioProcessorEditor::setSelectedFile(const juce::File& file)
 
     selectedFile = file;
     fileName.setText(file.getFileName(), juce::dontSendNotification);
+    fileName.setFont(juce::Font(juce::FontOptions(13.0f, juce::Font::bold)));
     status.setText("Ready to analyse", juce::dontSendNotification);
     learnButton.setEnabled(true);
     resized();

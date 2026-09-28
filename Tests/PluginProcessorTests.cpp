@@ -343,6 +343,31 @@ bool testSmoothScaleEndpoints()
             return false;
         }
     }
+
+    const auto flatLinear = [] (float) { return 0.0f; };
+    const auto jaggedStep = [] (float) { return 100.0f; };
+    const auto corner = [] (float position)
+    {
+        return std::abs(position - 0.5f) * 100.0f;
+    };
+    float previousCornerValue = -1.0f;
+    for (int smooth = 1; smooth <= maximumSmooth; ++smooth)
+    {
+        if (std::abs(PitchCurveSmoothing::valueAt(
+                0.25f, smooth, flatLinear, jaggedStep)) > 1.0e-6f)
+        {
+            std::cerr << "Smooth 1-10 must not blend staircase ripple into the curve\n";
+            return false;
+        }
+        const float cornerValue = PitchCurveSmoothing::valueAt(
+            0.5f, smooth, corner, jaggedStep);
+        if (cornerValue + 1.0e-6f < previousCornerValue)
+        {
+            std::cerr << "Smooth strength must increase monotonically\n";
+            return false;
+        }
+        previousCornerValue = cornerValue;
+    }
     return true;
 }
 
