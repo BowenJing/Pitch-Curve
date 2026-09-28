@@ -72,7 +72,7 @@ ContourLookAndFeel::ContourLookAndFeel()
 
 void ContourLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
                                           float position, float startAngle, float endAngle,
-                                          juce::Slider& slider)
+                                          juce::Slider&)
 {
     auto bounds = juce::Rectangle<float>(static_cast<float>(x), static_cast<float>(y),
                                          static_cast<float>(width), static_cast<float>(height))
@@ -84,22 +84,20 @@ void ContourLookAndFeel::drawRotarySlider(juce::Graphics& g, int x, int y, int w
     juce::Path track;
     track.addCentredArc(centre.x, centre.y, radius, radius, 0.0f,
                         startAngle, endAngle, true);
-    g.setColour(Palette::panelLight.withAlpha(slider.isEnabled() ? 1.0f : 0.55f));
+    g.setColour(Palette::panelLight);
     g.strokePath(track, juce::PathStrokeType(line, juce::PathStrokeType::curved,
                                               juce::PathStrokeType::rounded));
 
     juce::Path value;
     value.addCentredArc(centre.x, centre.y, radius, radius, 0.0f,
                         startAngle, juce::jmap(position, startAngle, endAngle), true);
-    g.setColour(slider.isEnabled() ? Palette::accent
-                                   : Palette::muted.withAlpha(0.56f));
+    g.setColour(Palette::accent);
     g.strokePath(value, juce::PathStrokeType(line, juce::PathStrokeType::curved,
                                               juce::PathStrokeType::rounded));
 
     const float angle = juce::jmap(position, startAngle, endAngle);
     const auto dot = centre + juce::Point<float>(std::sin(angle), -std::cos(angle)) * radius;
-    g.setColour(slider.isEnabled() ? Palette::text
-                                   : Palette::muted.withAlpha(0.64f));
+    g.setColour(Palette::text);
     g.fillEllipse(juce::Rectangle<float>(7.0f, 7.0f).withCentre(dot));
 }
 
@@ -157,8 +155,6 @@ void DurationLockButton::paintButton(juce::Graphics& g, bool highlighted, bool d
                     centre.x + 5.0f, centre.y - 3.0f);
     if (locked)
         shackle.lineTo(centre.x + 5.0f, centre.y + 1.0f);
-    else
-        shackle.lineTo(centre.x + 8.0f, centre.y - 6.0f);
     g.setColour(iconColour);
     g.strokePath(shackle, juce::PathStrokeType(
         1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
@@ -824,9 +820,9 @@ void ContourAudioProcessorEditor::resized()
                       + juce::jmax(0, (timeSection.getHeight() - timeGroupHeight) / 2);
     timeKnob.setBounds(timeSection.getCentreX() - ringSize / 2,
                        timeTop, ringSize, ringSize);
-    constexpr int lockSize = 22;
-    durationLock.setBounds(timeKnob.getRight() - 5,
-                           timeKnob.getY() - 5,
+    constexpr int lockSize = 21;
+    durationLock.setBounds(timeKnob.getRight() - 4,
+                           timeKnob.getY() - 3,
                            lockSize, lockSize);
     const int fieldsY = timeKnob.getBottom() + knobToFieldGap;
     const int timeFieldsWidth = fieldWidth * 2 + fieldGap;
@@ -914,7 +910,7 @@ void ContourAudioProcessorEditor::updateDurationLockControls()
         editor->setReadOnly(locked);
         editor->setInterceptsMouseClicks(! locked, false);
         editor->setWantsKeyboardFocus(! locked);
-        editor->setAlpha(locked ? 0.62f : 1.0f);
+        editor->setAlpha(1.0f);
     }
 }
 

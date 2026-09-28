@@ -1,6 +1,6 @@
-# Pitch Curve 0.7.11 用户说明书
+# Pitch Curve 0.7.12 用户说明书
 
-适用版本：Pitch Curve 0.7.11
+适用版本：Pitch Curve 0.7.12
 文档语言：简体中文
 
 ## 1. 产品简介
@@ -49,7 +49,7 @@ Windows 在程序或 DAW 已加载插件时会锁定对应文件。如果没有�
 
 ### 3.2 安装步骤
 
-1. 运行 `Pitch-Curve-0.7.11-Windows-x64.exe`。
+1. 运行 `Pitch-Curve-0.7.12-Windows-x64.exe`。
 2. 根据 Windows 提示授予管理员权限。
 3. 完成安装。
 4. 重新打开 DAW，并执行一次插件重新扫描。
@@ -289,7 +289,7 @@ Pitch Curve 使用高质量频谱移调算法，因此会产生固定处理延�
 1. 关闭 DAW 和 Pitch Curve。
 2. 打开 Windows“设置”。
 3. 进入“应用”或“已安装的应用”。
-4. 找到 `Pitch Curve 0.7.11`。
+4. 找到 `Pitch Curve 0.7.12`。
 5. 点击“卸载”。
 
 卸载器会删除独立程序、VST3 和卸载注册信息。
@@ -318,8 +318,10 @@ Pitch Curve：
 
 ## 14. 版本要点
 
-Pitch Curve 0.7.11 包含：
+Pitch Curve 0.7.12 包含：
 
+- 开锁锁梁移除翘起末端，锁图标轻微缩小并下移。
+- 锁定时仅改变锁图标，时间旋钮及 SECOND、FRAME 外观保持不变。
 - SECOND 与 FRAME 数字基线微调，与 Amount、Smooth 视觉居中一致。
 - 时长锁缩小并移到时间旋钮外侧右上方，开锁造型更清晰。
 - SECOND、FRAME、Amount 与 Smooth 数值框的数字统一居中。
