@@ -45,8 +45,6 @@ void ContourAudioProcessor::prepareToPlay(double sampleRate, int maximumBlockSiz
     bypassDelay.setDelay(static_cast<float>(getLatencySamples()));
     processed.setSize(getTotalNumOutputChannels(), juce::jmax(64, maximumBlockSize),
                       false, false, true);
-    pitchSmoother.reset(sampleRate, 0.025);
-    pitchSmoother.setCurrentAndTargetValue(0.0f);
     effectMix.reset(sampleRate, 0.010);
     effectMix.setCurrentAndTargetValue(0.0f);
 }
@@ -172,7 +170,8 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
     for (int offset = 0; offset < samples; offset += controlBlockSize)
     {
         const int blockSamples = juce::jmin(controlBlockSize, samples - offset);
-        const auto blockTimeline = timelineSample + offset - stretcher.inputLatency();
+        const auto blockTimeline = timelineSample + offset - stretcher.inputLatency()
+                                 + blockSamples / 2;
         const auto wrappedSample =
             ((blockTimeline % durationSamples) + durationSamples) % durationSamples;
         const float position =
@@ -183,8 +182,7 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
             ? juce::jlimit(-1200.0f, 1200.0f,
                            smoothedCurveValueAt(position, curve, smooth) * amount)
             : 0.0f;
-        pitchSmoother.setTargetValue(targetCents);
-        stretcher.setTransposeSemitones(pitchSmoother.skip(blockSamples) / 100.0f);
+        stretcher.setTransposeSemitones(targetCents / 100.0f);
 
         std::array<const float*, 2> inputPointers {};
         std::array<float*, 2> outputPointers {};

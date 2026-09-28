@@ -14,11 +14,13 @@ float valueAt(float position, int smooth,
     if (smooth == 0)
         return linear;
 
-    // Each step expands the same triangular low-pass kernel by one percent of
-    // the curve duration. This makes the transition from the unfiltered
-    // polyline at 0 to the rounded curve at 10 continuous and clearly audible.
-    constexpr int kernelRadius = 16;
-    const float radius = 0.01f * static_cast<float>(smooth);
+    // Use a densely sampled Gaussian kernel so short, tightly-spaced movements
+    // cannot alias into a new zig-zag pattern at high smoothing levels.
+    // Smooth 0 remains the original polyline; each following level increases
+    // sigma by the same amount for a predictable 0-10 progression.
+    constexpr int kernelRadius = 48;
+    const float sigma = 0.004f * static_cast<float>(smooth);
+    const float radius = 3.0f * sigma;
     float weightedValue = 0.0f;
     float totalWeight = 0.0f;
     for (int offset = -kernelRadius; offset <= kernelRadius; ++offset)
@@ -27,8 +29,8 @@ float valueAt(float position, int smooth,
                                / static_cast<float>(kernelRadius);
         float wrappedPosition = position + proportion * radius;
         wrappedPosition -= std::floor(wrappedPosition);
-        const float weight =
-            static_cast<float>(kernelRadius + 1 - std::abs(offset));
+        const float distanceInSigma = proportion * 3.0f;
+        const float weight = std::exp(-0.5f * distanceInSigma * distanceInSigma);
         weightedValue += linearValueAt(wrappedPosition) * weight;
         totalWeight += weight;
     }

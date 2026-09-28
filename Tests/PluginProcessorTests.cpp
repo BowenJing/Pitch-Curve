@@ -321,6 +321,30 @@ bool testSmoothScaleEndpoints()
         }
         previousCornerValue = cornerValue;
     }
+
+    const auto denseRipple = [] (float position)
+    {
+        return 100.0f * std::sin(6.28318530718f * 40.0f * position);
+    };
+    constexpr float ripplePosition = 0.003125f;
+    float previousRipple = std::abs(PitchCurveSmoothing::valueAt(
+        ripplePosition, 0, denseRipple));
+    for (int smooth = 1; smooth <= maximumSmooth; ++smooth)
+    {
+        const float ripple = std::abs(PitchCurveSmoothing::valueAt(
+            ripplePosition, smooth, denseRipple));
+        if (! std::isfinite(ripple) || ripple > previousRipple + 1.0e-3f)
+        {
+            std::cerr << "Smooth levels must monotonically suppress dense ripple\n";
+            return false;
+        }
+        previousRipple = ripple;
+    }
+    if (previousRipple > 0.1f)
+    {
+        std::cerr << "Smooth 10 must remove fine, dense zig-zag movement\n";
+        return false;
+    }
     return true;
 }
 

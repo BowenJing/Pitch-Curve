@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(Contour
-    VERSION 0.7.7
+    VERSION 0.7.8
     DESCRIPTION "Learn and transfer expressive pitch contours"
     LANGUAGES C CXX)
 
@@ -224,9 +224,13 @@ elseif(WIN32)
     set(CPACK_NSIS_PACKAGE_NAME "Pitch Curve")
     set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    set(CPACK_NSIS_DEFINES
+        [=[!define MUI_STARTMENUPAGE_DEFAULTFOLDER "Circus Audio"]=])
+    set(CPACK_NSIS_MENU_LINKS "Standalone/Pitch Curve.exe" "Pitch Curve")
     set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [=[
 RMDir /r \"$PROGRAMFILES64\\Contour\"
 RMDir /r \"$SMPROGRAMS\\Contour\"
+RMDir /r \"$SMPROGRAMS\\Pitch Curve\"
 DeleteRegKey SHCTX \"Software\\Contour Audio\\Contour\"
 RMDir /r \"$PROGRAMFILES64\\Sound Tools\\PitchTransform\"
 RMDir /r \"$SMPROGRAMS\\PitchTransform\"

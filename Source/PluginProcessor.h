@@ -63,7 +63,6 @@ private:
     signalsmith::stretch::SignalsmithStretch<float> stretcher;
     juce::AudioBuffer<float> processed;
     juce::dsp::DelayLine<float> bypassDelay { 65536 };
-    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> pitchSmoother;
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear> effectMix;
     double currentSampleRate = 44100.0;
     int64_t freeRunningSample = 0;
