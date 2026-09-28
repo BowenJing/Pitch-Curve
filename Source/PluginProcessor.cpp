@@ -83,20 +83,6 @@ float ContourAudioProcessor::curveValueAt(float position,
     return juce::jmap(proportion, lower->cents, upper->cents);
 }
 
-float ContourAudioProcessor::steppedCurveValueAt(float position,
-                                                 const CurveData& curve) const
-{
-    if (curve.pointCount == 0)
-        return 0.0f;
-    position = PitchCurveSmoothing::quantiseStepPosition(position);
-    const auto begin = curve.points.begin();
-    const auto end = begin + static_cast<std::ptrdiff_t>(curve.pointCount);
-    const auto upper = std::upper_bound(
-        begin, end, position,
-        [] (float value, const PitchPoint& point) { return value < point.position; });
-    return upper == begin ? begin->cents : (upper - 1)->cents;
-}
-
 float ContourAudioProcessor::smoothedCurveValueAt(float position,
                                                    const CurveData& curve,
                                                    int smooth) const
@@ -106,10 +92,6 @@ float ContourAudioProcessor::smoothedCurveValueAt(float position,
         [this, &curve] (float samplePosition)
         {
             return curveValueAt(samplePosition, curve);
-        },
-        [this, &curve] (float samplePosition)
-        {
-            return steppedCurveValueAt(samplePosition, curve);
         });
 }
 

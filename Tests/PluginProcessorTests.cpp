@@ -282,88 +282,41 @@ bool testStoppedTransportResetsDisplay()
 
 bool testSmoothScaleEndpoints()
 {
-    const float firstStep = PitchCurveSmoothing::quantiseStepPosition(0.01f);
-    const float sameStep = PitchCurveSmoothing::quantiseStepPosition(0.04f);
-    const float nextStep = PitchCurveSmoothing::quantiseStepPosition(0.05f);
-    if (std::abs(firstStep - sameStep) > 1.0e-6f
-        || std::abs(nextStep - 1.0f / PitchCurveSmoothing::stepIntervals) > 1.0e-6f)
-    {
-        std::cerr << "Smooth 0 steps must preserve the minimum segment length\n";
-        return false;
-    }
-
     const auto linearValueAt = [] (float position)
     {
         return position * 100.0f;
     };
-    const auto steppedValueAt = [] (float position)
-    {
-        return position < 0.5f ? -100.0f : 100.0f;
-    };
-
     const float position = 0.49f;
     const float hardValue = PitchCurveSmoothing::valueAt(
-        position, 0, linearValueAt, steppedValueAt);
-    if (std::abs(hardValue + 100.0f) > 1.0e-6f)
+        position, 0, linearValueAt);
+    if (std::abs(hardValue - linearValueAt(position)) > 1.0e-6f)
     {
-        std::cerr << "Smooth 0 must use the stepped curve exactly\n";
+        std::cerr << "Smooth 0 must preserve the continuous source curve\n";
         return false;
     }
 
-    float weightedValue = 0.0f;
-    float totalWeight = 0.0f;
     constexpr int maximumSmooth = 10;
-    constexpr float radius = 0.004f * maximumSmooth;
-    for (int offset = -maximumSmooth; offset <= maximumSmooth; ++offset)
-    {
-        float wrapped = position
-                      + static_cast<float>(offset) / maximumSmooth * radius;
-        wrapped -= std::floor(wrapped);
-        const float weight =
-            static_cast<float>(maximumSmooth + 1 - std::abs(offset));
-        weightedValue += linearValueAt(wrapped) * weight;
-        totalWeight += weight;
-    }
-    const float expectedMaximum = weightedValue / totalWeight;
-    const float maximumValue = PitchCurveSmoothing::valueAt(
-        position, maximumSmooth, linearValueAt, steppedValueAt);
-    if (std::abs(maximumValue - expectedMaximum) > 1.0e-6f)
-    {
-        std::cerr << "Smooth 10 must preserve the established rounded result\n";
-        return false;
-    }
-
-    for (int smooth = 1; smooth < maximumSmooth; ++smooth)
-    {
-        const float value = PitchCurveSmoothing::valueAt(
-            position, smooth, linearValueAt, steppedValueAt);
-        if (! std::isfinite(value))
-        {
-            std::cerr << "Intermediate smooth level produced a non-finite value\n";
-            return false;
-        }
-    }
-
     const auto flatLinear = [] (float) { return 0.0f; };
-    const auto jaggedStep = [] (float) { return 100.0f; };
     const auto corner = [] (float position)
     {
         return std::abs(position - 0.5f) * 100.0f;
     };
-    float previousCornerValue = -1.0f;
+    float previousCornerValue = PitchCurveSmoothing::valueAt(
+        0.5f, 0, corner);
     for (int smooth = 1; smooth <= maximumSmooth; ++smooth)
     {
         if (std::abs(PitchCurveSmoothing::valueAt(
-                0.25f, smooth, flatLinear, jaggedStep)) > 1.0e-6f)
+                0.25f, smooth, flatLinear)) > 1.0e-6f)
         {
-            std::cerr << "Smooth 1-10 must not blend staircase ripple into the curve\n";
+            std::cerr << "Smoothing must preserve a flat curve\n";
             return false;
         }
         const float cornerValue = PitchCurveSmoothing::valueAt(
-            0.5f, smooth, corner, jaggedStep);
-        if (cornerValue + 1.0e-6f < previousCornerValue)
+            0.5f, smooth, corner);
+        if (! std::isfinite(cornerValue)
+            || cornerValue - previousCornerValue < 0.3f)
         {
-            std::cerr << "Smooth strength must increase monotonically\n";
+            std::cerr << "Each smooth level must produce a clearly stronger result\n";
             return false;
         }
         previousCornerValue = cornerValue;

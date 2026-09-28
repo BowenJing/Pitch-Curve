@@ -57,7 +57,6 @@ private:
     float yFromCents(float) const;
     float displayRangeSemitones() const;
     float linearCentsAt(float) const;
-    float steppedCentsAt(float) const;
     float displayCentsAt(float) const;
 
     ContourAudioProcessor& processor;

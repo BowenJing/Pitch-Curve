@@ -192,34 +192,13 @@ float CurveEditor::linearCentsAt(float position) const
     return juce::jmap(proportion, lower->cents, upper->cents);
 }
 
-float CurveEditor::steppedCentsAt(float position) const
-{
-    if (editablePoints.empty())
-        return 0.0f;
-
-    position = PitchCurveSmoothing::quantiseStepPosition(position);
-    if (editablePointsAreUniform && editablePoints.size() > 1)
-    {
-        const auto index = static_cast<size_t>(std::floor(
-            position * static_cast<float>(editablePoints.size() - 1)));
-        return editablePoints[juce::jmin(index, editablePoints.size() - 1)].cents;
-    }
-
-    const auto upper = std::upper_bound(
-        editablePoints.begin(), editablePoints.end(), position,
-        [] (float value, const PitchPoint& point) { return value < point.position; });
-    return upper == editablePoints.begin() ? editablePoints.front().cents
-                                           : (upper - 1)->cents;
-}
-
 float CurveEditor::displayCentsAt(float position) const
 {
     const int smooth = juce::roundToInt(
         processor.parameters().getRawParameterValue("smooth")->load());
     return PitchCurveSmoothing::valueAt(
         position, smooth,
-        [this] (float samplePosition) { return linearCentsAt(samplePosition); },
-        [this] (float samplePosition) { return steppedCentsAt(samplePosition); });
+        [this] (float samplePosition) { return linearCentsAt(samplePosition); });
 }
 
 void CurveEditor::paint(juce::Graphics& g)
@@ -277,37 +256,17 @@ void CurveEditor::paint(juce::Graphics& g)
     else
     {
         juce::Path curve;
-        const int smooth = juce::roundToInt(
-            processor.parameters().getRawParameterValue("smooth")->load());
-        if (smooth == 0)
+        constexpr int displaySamples = 256;
+        for (int i = 0; i < displaySamples; ++i)
         {
-            float previousCents = steppedCentsAt(0.0f);
-            curve.startNewSubPath(bounds.getX(), yFromCents(previousCents));
-            for (int i = 1; i <= PitchCurveSmoothing::stepIntervals; ++i)
-            {
-                const float position = static_cast<float>(i)
-                                     / PitchCurveSmoothing::stepIntervals;
-                const float x = bounds.getX() + position * bounds.getWidth();
-                curve.lineTo(x, yFromCents(previousCents));
-                const float nextCents = steppedCentsAt(position);
-                curve.lineTo(x, yFromCents(nextCents));
-                previousCents = nextCents;
-            }
-        }
-        else
-        {
-            constexpr int displaySamples = 256;
-            for (int i = 0; i < displaySamples; ++i)
-            {
-                const float position = static_cast<float>(i) / (displaySamples - 1);
-                const auto point = juce::Point<float>(
-                    bounds.getX() + position * bounds.getWidth(),
-                    yFromCents(displayCentsAt(position)));
-                if (i == 0)
-                    curve.startNewSubPath(point);
-                else
-                    curve.lineTo(point);
-            }
+            const float position = static_cast<float>(i) / (displaySamples - 1);
+            const auto point = juce::Point<float>(
+                bounds.getX() + position * bounds.getWidth(),
+                yFromCents(displayCentsAt(position)));
+            if (i == 0)
+                curve.startNewSubPath(point);
+            else
+                curve.lineTo(point);
         }
 
         juce::Path fill = curve;
