@@ -780,8 +780,7 @@ void ContourAudioProcessorEditor::resized()
                               juce::jmin(amountSection.getHeight() - valueBlockHeight,
                                          smoothSection.getHeight() - valueBlockHeight))));
 
-    const auto layoutControlGroup = [ringSize, valueBlockHeight, knobToFieldGap,
-                                     fieldWidth, fieldHeight, labelHeight]
+    const auto layoutControlGroup = [ringSize]
         (juce::Rectangle<int> section, juce::Slider& knob,
          juce::TextEditor& editor, juce::Label& label)
     {

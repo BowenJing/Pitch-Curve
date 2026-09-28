@@ -59,10 +59,15 @@ public release.
 
 For an unsigned x64 development build from Debian/Ubuntu, use LLVM 20,
 Microsoft's CRT/SDK acquired with `xwin`, Wine (to run JUCE's Windows VST3
-manifest helper), and NSIS. JUCE 8 explicitly does not support MinGW.
+manifest helper), and NSIS. JUCE 8 explicitly does not support MinGW. JUCE
+also builds `juceaide` for the Linux host and deliberately uses the system
+`c++` for that step, so `/usr/bin/c++` must be a working native compiler.
 
 ```bash
-sudo apt-get install clang-20 clang-tools-20 lld-20 llvm-20 nsis wine
+sudo apt-get install g++-13 clang-20 clang-tools-20 lld-20 llvm-20 nsis wine
+# Only needed when the current c++ alternative is broken or points at an
+# incomplete Clang/libstdc++ installation:
+sudo update-alternatives --set c++ /usr/bin/g++
 cargo install xwin --version 0.10.0 --locked
 xwin --accept-license --arch x86_64 splat --output .xwin
 cmake -S . -B build-windows \
