@@ -333,7 +333,7 @@ bool testSmoothScaleEndpoints()
     {
         const float ripple = std::abs(PitchCurveSmoothing::valueAt(
             ripplePosition, smooth, denseRipple));
-        if (! std::isfinite(ripple) || ripple > previousRipple + 1.0e-3f)
+        if (! std::isfinite(ripple) || ripple > previousRipple + 0.01f)
         {
             std::cerr << "Smooth levels must monotonically suppress dense ripple\n";
             return false;

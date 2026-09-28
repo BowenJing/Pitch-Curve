@@ -18,9 +18,9 @@ float valueAt(float position, int smooth,
     // cannot alias into a new zig-zag pattern at high smoothing levels.
     // Smooth 0 remains the original polyline; each following level increases
     // sigma by the same amount for a predictable 0-10 progression.
-    constexpr int kernelRadius = 48;
+    constexpr int kernelRadius = 64;
     const float sigma = 0.004f * static_cast<float>(smooth);
-    const float radius = 3.0f * sigma;
+    const float radius = 4.0f * sigma;
     float weightedValue = 0.0f;
     float totalWeight = 0.0f;
     for (int offset = -kernelRadius; offset <= kernelRadius; ++offset)
@@ -29,7 +29,7 @@ float valueAt(float position, int smooth,
                                / static_cast<float>(kernelRadius);
         float wrappedPosition = position + proportion * radius;
         wrappedPosition -= std::floor(wrappedPosition);
-        const float distanceInSigma = proportion * 3.0f;
+        const float distanceInSigma = proportion * 4.0f;
         const float weight = std::exp(-0.5f * distanceInSigma * distanceInSigma);
         weightedValue += linearValueAt(wrappedPosition) * weight;
         totalWeight += weight;
