@@ -371,119 +371,6 @@ bool testSmoothScaleEndpoints()
     return true;
 }
 
-bool testMinimumChangeDrawingProjection()
-{
-    constexpr int pointCount = 255;
-    const auto valueFromRing = [] (const std::vector<float>& values, float position)
-    {
-        position -= std::floor(position);
-        const float scaled = position * static_cast<float>(values.size());
-        const auto lower = static_cast<size_t>(std::floor(scaled)) % values.size();
-        const auto upper = (lower + 1) % values.size();
-        const float fraction = scaled - std::floor(scaled);
-        return values[lower] * (1.0f - fraction) + values[upper] * fraction;
-    };
-
-    for (const int smooth : { 0, 1, 5, 10 })
-    {
-        for (const float position : { 0.5f, 0.995f })
-        {
-            const auto influence = PitchCurveSmoothing::discreteInfluence(
-                position, smooth, pointCount);
-            float weightSum = 0.0f;
-            float energy = 0.0f;
-            for (const float weight : influence)
-            {
-                if (! std::isfinite(weight) || weight < 0.0f)
-                {
-                    std::cerr << "Drawing influence contains an invalid weight\n";
-                    return false;
-                }
-                weightSum += weight;
-                energy += weight * weight;
-            }
-            if (std::abs(weightSum - 1.0f) > 1.0e-5f || energy <= 0.0f)
-            {
-                std::cerr << "Drawing influence is not normalized\n";
-                return false;
-            }
-
-            std::vector<float> projected(static_cast<size_t>(pointCount), 0.0f);
-            constexpr float target = 100.0f;
-            for (int i = 0; i < pointCount; ++i)
-                projected[static_cast<size_t>(i)] =
-                    target * influence[static_cast<size_t>(i)] / energy;
-
-            const float visible = PitchCurveSmoothing::valueAt(
-                position, smooth,
-                [&] (float samplePosition)
-                {
-                    return valueFromRing(projected, samplePosition);
-                });
-            if (std::abs(visible - target) > 0.02f)
-            {
-                std::cerr << "Minimum-change drawing did not reach the pointer\n";
-                return false;
-            }
-        }
-    }
-
-    // Compared with shifting the complete filter support equally, the
-    // minimum-energy projection must use less total raw movement and must not
-    // carry a large plateau to the edge of the old brush.
-    constexpr int smooth = 10;
-    constexpr float position = 0.5f;
-    constexpr float target = 100.0f;
-    const auto influence = PitchCurveSmoothing::discreteInfluence(
-        position, smooth, pointCount);
-    float energy = 0.0f;
-    for (const float weight : influence)
-        energy += weight * weight;
-
-    std::vector<float> projected(static_cast<size_t>(pointCount), 0.0f);
-    float projectedMovement = 0.0f;
-    for (int i = 0; i < pointCount; ++i)
-    {
-        auto& value = projected[static_cast<size_t>(i)];
-        value = target * influence[static_cast<size_t>(i)] / energy;
-        projectedMovement += value * value;
-    }
-
-    std::vector<float> oldBrush(static_cast<size_t>(pointCount), 0.0f);
-    const int centre = static_cast<int>(position * pointCount);
-    const int oldRadius = static_cast<int>(std::ceil(
-        PitchCurveSmoothing::supportRadius(smooth) * pointCount)) + 2;
-    float oldMovement = 0.0f;
-    for (int offset = -oldRadius; offset <= oldRadius; ++offset)
-    {
-        const int index = (centre + offset + pointCount) % pointCount;
-        oldBrush[static_cast<size_t>(index)] = target;
-        oldMovement += target * target;
-    }
-    if (projectedMovement >= oldMovement * 0.7f)
-    {
-        std::cerr << "Drawing projection still disturbs too much source curve\n";
-        return false;
-    }
-
-    const float probe = position + PitchCurveSmoothing::supportRadius(smooth);
-    const auto visibleAt = [&] (const std::vector<float>& values)
-    {
-        return PitchCurveSmoothing::valueAt(
-            probe, smooth,
-            [&] (float samplePosition)
-            {
-                return valueFromRing(values, samplePosition);
-            });
-    };
-    if (std::abs(visibleAt(projected)) >= std::abs(visibleAt(oldBrush)) * 0.25f)
-    {
-        std::cerr << "Drawing projection still creates a wide visible plateau\n";
-        return false;
-    }
-    return true;
-}
-
 bool testConcurrentCurvePublication()
 {
     ContourAudioProcessor processor;
@@ -537,7 +424,6 @@ int main()
         || ! testDefaultsAndDurationLimit()
         || ! testStoppedTransportResetsDisplay()
         || ! testSmoothScaleEndpoints()
-        || ! testMinimumChangeDrawingProjection()
         || ! testConcurrentCurvePublication())
         return 1;
 

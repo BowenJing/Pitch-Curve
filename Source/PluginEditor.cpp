@@ -396,64 +396,17 @@ void CurveEditor::drawAt(juce::Point<float> point)
     const float x = juce::jlimit(0.0f, 1.0f, (point.x - bounds.getX()) / bounds.getWidth());
     const float cents = centsFromY(point.y);
 
-    // The first and last samples represent the same point in the repeating
-    // contour. Treat the editable samples as a ring so drawing close to either
-    // edge remains symmetrical instead of being clipped and then averaged.
-    const int uniquePointCount = static_cast<int>(editablePoints.size()) - 1;
-    if (uniquePointCount <= 0)
-        return;
+    const int index = juce::jlimit(0, static_cast<int>(editablePoints.size()) - 1,
+                                   juce::roundToInt(x * (editablePoints.size() - 1)));
     const int smooth = juce::roundToInt(
         processor.parameters().getRawParameterValue("smooth")->load());
-
-    // Build the exact contribution of every editable sample to the visible
-    // point under the mouse. Moving samples in proportion to these weights is
-    // the minimum-energy solution to the point constraint: the curve reaches
-    // the pointer while the surrounding contour changes as little as the
-    // selected smoothing kernel permits.
-    const auto influence =
-        PitchCurveSmoothing::discreteInfluence(x, smooth, uniquePointCount);
-    if (influence.empty())
-        return;
-
-    // Usually one projection is exact. Extra passes only compensate when raw
-    // samples touch the pitch limits. Keeping this bounded avoids flattening a
-    // wide neighbourhood merely because the pointer is at an extreme.
-    constexpr int maximumProjectionPasses = 4;
-    for (int pass = 0; pass < maximumProjectionPasses; ++pass)
+    const int radius = 3 + juce::roundToInt(0.8f * static_cast<float>(smooth));
+    for (int i = juce::jmax(0, index - radius);
+         i <= juce::jmin(static_cast<int>(editablePoints.size()) - 1, index + radius); ++i)
     {
-        const float correction = cents - displayCentsAt(x);
-        if (std::abs(correction) < 0.1f)
-            break;
-
-        float movableEnergy = 0.0f;
-        for (int i = 0; i < uniquePointCount; ++i)
-        {
-            const auto& editablePoint = editablePoints[static_cast<size_t>(i)];
-            const bool canMove = correction > 0.0f
-                ? editablePoint.cents < 600.0f
-                : editablePoint.cents > -600.0f;
-            if (canMove)
-            {
-                const float weight = influence[static_cast<size_t>(i)];
-                movableEnergy += weight * weight;
-            }
-        }
-        if (movableEnergy <= 1.0e-9f)
-            break;
-
-        const float gain = correction / movableEnergy;
-        for (int i = 0; i < uniquePointCount; ++i)
-        {
-            const float weight = influence[static_cast<size_t>(i)];
-            if (weight <= 0.0f)
-                continue;
-            auto& editablePoint = editablePoints[static_cast<size_t>(i)];
-            editablePoint.cents = juce::jlimit(
-                -600.0f, 600.0f, editablePoint.cents + gain * weight);
-            editablePoint.confidence = 1.0f;
-        }
-        editablePoints.back().cents = editablePoints.front().cents;
-        editablePoints.back().confidence = editablePoints.front().confidence;
+        const float weight = 1.0f - std::abs(i - index) / static_cast<float>(radius + 1);
+        editablePoints[static_cast<size_t>(i)].cents =
+            juce::jmap(weight, editablePoints[static_cast<size_t>(i)].cents, cents);
     }
 }
 
