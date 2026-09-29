@@ -5,6 +5,11 @@
 
 namespace PitchCurveSmoothing
 {
+inline float supportRadius(int smooth)
+{
+    return 0.016f * static_cast<float>(std::clamp(smooth, 0, 10));
+}
+
 template <typename LinearValueAt>
 float valueAt(float position, int smooth,
               LinearValueAt&& linearValueAt)
@@ -20,7 +25,7 @@ float valueAt(float position, int smooth,
     // sigma by the same amount for a predictable 0-10 progression.
     constexpr int kernelRadius = 64;
     const float sigma = 0.004f * static_cast<float>(smooth);
-    const float radius = 4.0f * sigma;
+    const float radius = supportRadius(smooth);
     float weightedValue = 0.0f;
     float totalWeight = 0.0f;
     for (int offset = -kernelRadius; offset <= kernelRadius; ++offset)
