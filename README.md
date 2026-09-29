@@ -4,7 +4,7 @@ Pitch Curve is a cross-platform audio plug-in that captures the small pitch move
 of one performance and applies them to another. A contour can also be drawn
 directly in the editor.
 
-## Version 0.7.16
+## Version 0.7.17
 
 - Drag or browse for WAV, AIFF, FLAC, MP3, or OGG audio.
 - YIN-based monophonic pitch tracking with confidence gating and median
@@ -14,8 +14,9 @@ directly in the editor.
 - Editable ±6-semitone base curve, reaching ±12 semitones at 200% Amount.
 - Amount-aware semitone axis (±0 at 0%, ±6 at 100%, ±12 at 200%).
 - Smooth defaults to 5. Smooth 0 preserves the continuous source polyline;
-  levels 1–10 use a densely sampled Gaussian low-pass with a clearly
-  differentiated progression and robust suppression of fine zig-zags.
+  levels 1–10 progressively blend toward a cyclic monotone cubic curve.
+  Authored extrema and relative feature amplitudes remain unchanged, with no
+  overshoot.
 - Pitch processing reads the same smoothed curve shown in the editor at each
   control-block midpoint, without an additional hidden 25 ms pitch ramp.
 - 30 FPS second/frame duration controls up to 60 seconds, with automatic frame carry.
@@ -41,8 +42,9 @@ directly in the editor.
   entity declarations before parsing.
 - Defensive file/state limits, cancellable analysis, lower-copy pitch analysis,
   and bounded processing of oversized host blocks.
-- Curve publication never exposes a write-locked slot to the audio thread, and
-  Gaussian smoothing weights are cached outside real-time processing.
+- Curve publication never exposes a write-locked slot to the audio thread.
+- Shape-preserving smoothing replaces the previous 129-sample Gaussian kernel,
+  reducing real-time work while retaining every authored peak and valley.
 - Learn revalidates the selected file and temporarily locks curve editing so an
   asynchronous result cannot overwrite an edit made during analysis.
 - Standalone processing uses its active audio clock instead of a non-playing
