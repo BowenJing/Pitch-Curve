@@ -21,6 +21,17 @@ public:
     bool positionAvailable = true;
 };
 
+juce::MemoryBlock makeRawXmlState(const juce::String& xml)
+{
+    juce::MemoryBlock result;
+    juce::MemoryOutputStream output(result, false);
+    output.writeInt(0x21324356);
+    output.writeInt(xml.getNumBytesAsUTF8());
+    output.write(xml.toRawUTF8(), static_cast<size_t>(xml.getNumBytesAsUTF8()));
+    output.writeByte(0);
+    return result;
+}
+
 bool testLatencyMatchedBypass()
 {
     constexpr double sampleRate = 48000.0;
@@ -157,6 +168,8 @@ bool testStateRoundTripAndBounds()
         || std::abs(restoredCurve.front().cents - restoredCurve.back().cents) > 1.0e-6f
         || std::abs(restored.getContourDuration() - 3.5f) > 1.0e-6f
         || ! restored.isDurationLocked()
+        || std::abs(restored.parameters().getRawParameterValue("amount")->load() - 1.5f)
+               > 1.0e-6f
         || std::abs(restored.parameters().getRawParameterValue("smooth")->load() - 10.0f)
                > 1.0e-6f)
     {
@@ -174,6 +187,33 @@ bool testStateRoundTripAndBounds()
         return false;
     }
 
+    const auto entityState = makeRawXmlState(
+        "<?xml version=\"1.0\"?><!DOCTYPE PARAMETERS ["
+        "<!ENTITY repeated \"xxxxxxxxxxxxxxxx\">]>"
+        "<PARAMETERS amount=\"&repeated;\"/>");
+    restored.setStateInformation(entityState.getData(),
+                                 static_cast<int>(entityState.getSize()));
+    if (restored.getContour().size() != restoredCurve.size())
+    {
+        std::cerr << "DTD state must be rejected before XML expansion\n";
+        return false;
+    }
+
+    juce::String deepXml("<?xml version=\"1.0\"?><PARAMETERS>");
+    for (int i = 0; i < 9; ++i)
+        deepXml += "<N>";
+    for (int i = 0; i < 9; ++i)
+        deepXml += "</N>";
+    deepXml += "</PARAMETERS>";
+    const auto deepState = makeRawXmlState(deepXml);
+    restored.setStateInformation(deepState.getData(),
+                                 static_cast<int>(deepState.getSize()));
+    if (restored.getContour().size() != restoredCurve.size())
+    {
+        std::cerr << "Deep state must be rejected before recursive conversion\n";
+        return false;
+    }
+
     ContourAudioProcessor bounded;
     bounded.setContour({ { 0.25f, -5000.0f, 1.0f },
                          { 0.75f, 5000.0f, 1.0f } }, 1.0f);
@@ -183,6 +223,16 @@ bool testStateRoundTripAndBounds()
         || std::abs(boundedCurve[2].cents - 600.0f) > 1.0e-6f)
     {
         std::cerr << "Editable base pitch range must be clamped to +/-6 semitones\n";
+        return false;
+    }
+
+    bounded.setContour({ { 0.5f, -10.0f, 1.0f },
+                         { 0.5f, 20.0f, 0.5f } }, 1.0f);
+    const auto deduplicated = bounded.getContour();
+    if (deduplicated.size() != 3
+        || std::abs(deduplicated[1].position - 0.5f) > 1.0e-6f)
+    {
+        std::cerr << "Duplicate contour positions must be canonicalized\n";
         return false;
     }
     return true;

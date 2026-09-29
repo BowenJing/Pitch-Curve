@@ -2,7 +2,90 @@
 #include "PluginEditor.h"
 #include "CurveSmoothing.h"
 
+#include <cctype>
 #include <cmath>
+
+namespace
+{
+bool isSafeStatePayload(const void* data, int size)
+{
+    constexpr uint32_t xmlMagic = 0x21324356;
+    constexpr int maximumXmlBytes = 1024 * 1024;
+    constexpr int maximumXmlNodes = 8192;
+    constexpr int maximumXmlDepth = 8;
+
+    if (data == nullptr || size <= 8
+        || juce::ByteOrder::littleEndianInt(data) != xmlMagic)
+        return false;
+
+    const int xmlBytes = static_cast<int>(juce::ByteOrder::littleEndianInt(
+        juce::addBytesToPointer(data, 4)));
+    if (xmlBytes <= 0 || xmlBytes > size - 8 || xmlBytes > maximumXmlBytes)
+        return false;
+
+    const auto* xml = static_cast<const char*>(data) + 8;
+    int depth = 0;
+    int nodeCount = 0;
+    for (int i = 0; i < xmlBytes; ++i)
+    {
+        if (xml[i] == '\0')
+            return false;
+        if (xml[i] != '<')
+            continue;
+        if (++i >= xmlBytes)
+            return false;
+
+        const bool processingInstruction = xml[i] == '?';
+        const bool closingTag = xml[i] == '/';
+        if (xml[i] == '!')
+            return false; // State never needs comments, CDATA, DTDs, or entities.
+
+        char quote = 0;
+        char lastNonSpace = 0;
+        bool foundEnd = false;
+        for (; i < xmlBytes; ++i)
+        {
+            const char character = xml[i];
+            if (quote != 0)
+            {
+                if (character == quote)
+                    quote = 0;
+                continue;
+            }
+            if (character == '"' || character == '\'')
+            {
+                quote = character;
+                continue;
+            }
+            if (character == '>')
+            {
+                foundEnd = true;
+                break;
+            }
+            if (! std::isspace(static_cast<unsigned char>(character)))
+                lastNonSpace = character;
+        }
+        if (! foundEnd || quote != 0)
+            return false;
+        if (processingInstruction)
+            continue;
+
+        if (closingTag)
+        {
+            if (depth <= 0)
+                return false;
+            --depth;
+            continue;
+        }
+
+        if (++nodeCount > maximumXmlNodes || ++depth > maximumXmlDepth)
+            return false;
+        if (lastNonSpace == '/')
+            --depth;
+    }
+    return nodeCount > 0 && depth == 0;
+}
+}
 
 ContourAudioProcessor::ContourAudioProcessor()
     : AudioProcessor(BusesProperties()
@@ -29,6 +112,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ContourAudioProcessor::creat
 
 void ContourAudioProcessor::prepareToPlay(double sampleRate, int maximumBlockSize)
 {
+    PitchCurveSmoothing::prepare();
     currentSampleRate = sampleRate;
     freeRunningSample = 0;
     hostPlaybackSample = 0;
@@ -133,7 +217,8 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
     bool hasHostTransport = false;
     bool transportStopped = false;
     int64_t timelineSample = freeRunningSample + stretcher.inputLatency();
-    if (auto* hostPlayHead = getPlayHead())
+    if (auto* hostPlayHead = getPlayHead();
+        hostPlayHead != nullptr && wrapperType != wrapperType_Standalone)
     {
         hasHostTransport = true;
         transportStopped = true;
@@ -237,8 +322,16 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
         point.confidence = juce::jlimit(0.0f, 1.0f, point.confidence);
     }
 
-    std::sort(points.begin(), points.end(),
-              [] (const PitchPoint& a, const PitchPoint& b) { return a.position < b.position; });
+    std::stable_sort(points.begin(), points.end(),
+                     [] (const PitchPoint& a, const PitchPoint& b)
+                     {
+                         return a.position < b.position;
+                     });
+    points.erase(std::unique(points.begin(), points.end(),
+        [] (const PitchPoint& a, const PitchPoint& b)
+        {
+            return a.position == b.position;
+        }), points.end());
     constexpr size_t maximumInteriorPoints = maximumCurvePoints - 2;
     if (points.size() > maximumInteriorPoints)
     {
@@ -293,8 +386,8 @@ void ContourAudioProcessor::setContour(std::vector<PitchPoint> points, float dur
     updated.pointCount = points.size();
     std::copy(points.begin(), points.end(), updated.points.begin());
     updated.durationSeconds = juce::jlimit(1.0f / 30.0f, 60.0f, durationSeconds);
-    publishedCurveIndex.store(target, std::memory_order_release);
     curveSlotState[static_cast<size_t>(target)].store(0, std::memory_order_release);
+    publishedCurveIndex.store(target, std::memory_order_release);
     contourRevision.fetch_add(1);
 }
 
@@ -357,7 +450,8 @@ void ContourAudioProcessor::setStateInformation(const void* data, int size)
 {
     constexpr int maximumStateBytes = 2 * 1024 * 1024;
     constexpr int maximumStatePoints = 4096;
-    if (data == nullptr || size <= 0 || size > maximumStateBytes)
+    if (data == nullptr || size <= 0 || size > maximumStateBytes
+        || ! isSafeStatePayload(data, size))
         return;
 
     if (const auto xml = getXmlFromBinary(data, size))
