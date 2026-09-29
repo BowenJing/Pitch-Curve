@@ -1001,19 +1001,38 @@ void ContourAudioProcessorEditor::setSelectedFile(const juce::File& file)
     resized();
 }
 
+void ContourAudioProcessorEditor::setAnalysisControlsEnabled(bool enabled)
+{
+    fileButton.setEnabled(enabled);
+    learnButton.setEnabled(enabled && selectedFile.existsAsFile());
+    clearButton.setEnabled(enabled);
+    curveEditor.setEnabled(enabled);
+}
+
 void ContourAudioProcessorEditor::beginLearning()
 {
-    if (! selectedFile.existsAsFile() || analysing.exchange(true))
+    constexpr int64_t maximumFileBytes = 1024LL * 1024LL * 1024LL;
+    const int64_t fileSize = selectedFile.getSize();
+    if (! selectedFile.existsAsFile() || fileSize <= 0 || fileSize > maximumFileBytes)
+    {
+        status.setText("Audio file is missing or no longer safe to analyse",
+                       juce::dontSendNotification);
+        learnButton.setEnabled(false);
         return;
+    }
+    if (analysing.exchange(true))
+        return;
+
     analysisFile = selectedFile;
+    analysisFileSize = fileSize;
+    analysisModificationTime =
+        selectedFile.getLastModificationTime().toMilliseconds();
     status.setText("Listening for pitch movement...", juce::dontSendNotification);
-    learnButton.setEnabled(false);
-    fileButton.setEnabled(false);
+    setAnalysisControlsEnabled(false);
     if (! startThread())
     {
         analysing.store(false);
-        learnButton.setEnabled(true);
-        fileButton.setEnabled(true);
+        setAnalysisControlsEnabled(true);
         status.setText("Could not start audio analysis", juce::dontSendNotification);
     }
 }
@@ -1021,11 +1040,23 @@ void ContourAudioProcessorEditor::beginLearning()
 void ContourAudioProcessorEditor::run()
 {
     PitchAnalysis analysis;
+    bool audioDecoded = false;
     try
     {
         juce::AudioFormatManager formats;
         formats.registerBasicFormats();
-        std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(analysisFile));
+        constexpr int64_t maximumFileBytes = 1024LL * 1024LL * 1024LL;
+        const int64_t currentSize = analysisFile.getSize();
+        const int64_t currentModificationTime =
+            analysisFile.getLastModificationTime().toMilliseconds();
+        std::unique_ptr<juce::AudioFormatReader> reader;
+        if (analysisFile.existsAsFile()
+            && currentSize > 0 && currentSize <= maximumFileBytes
+            && currentSize == analysisFileSize
+            && currentModificationTime == analysisModificationTime)
+        {
+            reader.reset(formats.createReaderFor(analysisFile));
+        }
 
         if (reader != nullptr && ! threadShouldExit()
             && std::isfinite(reader->sampleRate)
@@ -1050,8 +1081,11 @@ void ContourAudioProcessorEditor::run()
                 readSucceeded = reader->read(&audio, offset, chunk, offset, true, true);
             }
             if (readSucceeded && ! threadShouldExit())
+            {
+                audioDecoded = true;
                 analysis = PitchDetector::analyse(audio, reader->sampleRate, 55.0f, 1600.0f,
                                                    [this] { return threadShouldExit(); });
+            }
         }
     }
     catch (...)
@@ -1063,13 +1097,19 @@ void ContourAudioProcessorEditor::run()
         return;
 
     auto safe = juce::Component::SafePointer<ContourAudioProcessorEditor>(this);
-    juce::MessageManager::callAsync([safe, result = std::move(analysis)] () mutable
+    juce::MessageManager::callAsync(
+        [safe, result = std::move(analysis), audioDecoded] () mutable
     {
         if (safe == nullptr)
             return;
         safe->analysing.store(false);
-        safe->learnButton.setEnabled(true);
-        safe->fileButton.setEnabled(true);
+        safe->setAnalysisControlsEnabled(true);
+        if (! audioDecoded)
+        {
+            safe->status.setText("Could not read audio file - select it again",
+                                 juce::dontSendNotification);
+            return;
+        }
         if (result.points.empty())
         {
             safe->status.setText("No stable pitch found - try a monophonic source",

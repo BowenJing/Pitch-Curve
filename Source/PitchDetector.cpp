@@ -20,6 +20,7 @@ float median(std::vector<float> values)
 }
 
 juce::AudioBuffer<float> downsampleForAnalysis(const juce::AudioBuffer<float>& input,
+                                                int inputChannel,
                                                 double sourceRate,
                                                 std::function<bool()>& shouldCancel)
 {
@@ -46,7 +47,7 @@ juce::AudioBuffer<float> downsampleForAnalysis(const juce::AudioBuffer<float>& i
                 0.0, juce::jmin(end, inputSample + 1.0) - juce::jmax(start, static_cast<double>(inputSample)));
             if (inputSample >= 0 && inputSample < input.getNumSamples())
             {
-                sum += input.getSample(0, inputSample) * weight;
+                sum += input.getSample(inputChannel, inputSample) * weight;
                 totalWeight += weight;
             }
         }
@@ -171,18 +172,17 @@ PitchAnalysis PitchDetector::analyse(const juce::AudioBuffer<float>& audio,
             analysisChannel = channel;
         }
     }
-    juce::AudioBuffer<float> mono(1, audio.getNumSamples());
-    mono.copyFrom(0, 0, audio, analysisChannel, 0, audio.getNumSamples());
-
     juce::AudioBuffer<float> downsampled;
-    const juce::AudioBuffer<float>* analysisAudio = &mono;
+    const juce::AudioBuffer<float>* analysisAudio = &audio;
     double analysisSampleRate = sampleRate;
     if (sampleRate > maximumAnalysisSampleRate)
     {
-        downsampled = downsampleForAnalysis(mono, sampleRate, shouldCancel);
+        downsampled = downsampleForAnalysis(audio, analysisChannel,
+                                            sampleRate, shouldCancel);
         if (downsampled.getNumSamples() == 0)
             return {};
         analysisAudio = &downsampled;
+        analysisChannel = 0;
         analysisSampleRate = maximumAnalysisSampleRate;
     }
 
@@ -196,7 +196,7 @@ PitchAnalysis PitchDetector::analyse(const juce::AudioBuffer<float>& audio,
             return {};
 
         const auto [frequency, confidence] =
-            detectFrame(analysisAudio->getReadPointer(0, start), frameSize,
+            detectFrame(analysisAudio->getReadPointer(analysisChannel, start), frameSize,
                         analysisSampleRate, minimumHz, maximumHz);
         if (frequency > 0.0f && confidence >= 0.65f)
         {

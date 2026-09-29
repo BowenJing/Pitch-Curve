@@ -115,6 +115,7 @@ private:
     void chooseFile();
     void beginLearning();
     void setSelectedFile(const juce::File&);
+    void setAnalysisControlsEnabled(bool);
     void applyDurationTimecode();
     void updateDurationTimecode();
     void updateDurationLockControls();
@@ -147,6 +148,8 @@ private:
     juce::Slider smooth;
     juce::File selectedFile;
     juce::File analysisFile;
+    int64_t analysisFileSize = 0;
+    int64_t analysisModificationTime = 0;
     std::unique_ptr<juce::FileChooser> chooser;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> amountAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> smoothAttachment;
