@@ -396,18 +396,26 @@ void CurveEditor::drawAt(juce::Point<float> point)
     const float x = juce::jlimit(0.0f, 1.0f, (point.x - bounds.getX()) / bounds.getWidth());
     const float cents = centsFromY(point.y);
 
-    const int index = juce::jlimit(0, static_cast<int>(editablePoints.size()) - 1,
-                                   juce::roundToInt(x * (editablePoints.size() - 1)));
-    const int smooth = juce::roundToInt(
-        processor.parameters().getRawParameterValue("smooth")->load());
-    const int radius = 3 + juce::roundToInt(0.8f * static_cast<float>(smooth));
-    for (int i = juce::jmax(0, index - radius);
-         i <= juce::jmin(static_cast<int>(editablePoints.size()) - 1, index + radius); ++i)
+    // The first and last samples represent the same point in the repeating
+    // contour. Treat the editable samples as a ring so drawing close to either
+    // edge remains symmetrical instead of being clipped and then averaged.
+    const int uniquePointCount = static_cast<int>(editablePoints.size()) - 1;
+    if (uniquePointCount <= 0)
+        return;
+    const int index = juce::roundToInt(x * uniquePointCount) % uniquePointCount;
+    constexpr int radius = 3;
+    for (int offset = -radius; offset <= radius; ++offset)
     {
-        const float weight = 1.0f - std::abs(i - index) / static_cast<float>(radius + 1);
-        editablePoints[static_cast<size_t>(i)].cents =
-            juce::jmap(weight, editablePoints[static_cast<size_t>(i)].cents, cents);
+        const int wrappedIndex =
+            (index + offset + uniquePointCount) % uniquePointCount;
+        const float weight = 1.0f - std::abs(offset)
+                                    / static_cast<float>(radius + 1);
+        auto& editablePoint = editablePoints[static_cast<size_t>(wrappedIndex)];
+        editablePoint.cents = juce::jmap(weight, editablePoint.cents, cents);
+        editablePoint.confidence = 1.0f;
     }
+    editablePoints.back().cents = editablePoints.front().cents;
+    editablePoints.back().confidence = editablePoints.front().confidence;
 }
 
 void CurveEditor::mouseDown(const juce::MouseEvent& event)
