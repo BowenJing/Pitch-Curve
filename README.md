@@ -4,7 +4,7 @@ Pitch Curve is a cross-platform audio plug-in that captures the small pitch move
 of one performance and applies them to another. A contour can also be drawn
 directly in the editor.
 
-## Version 0.7.12
+## Version 0.7.13
 
 - Drag or browse for WAV, AIFF, FLAC, MP3, or OGG audio.
 - YIN-based monophonic pitch tracking with confidence gating and median
@@ -37,8 +37,16 @@ directly in the editor.
 - Signalsmith Stretch high-quality, phase-coherent pitch processing.
 - VST3 and standalone builds on macOS and Windows; Audio Unit builds on macOS.
 - Session state restores both the parameter and learned/drawn contour.
-- Defensive file/state limits, cancellable analysis, and bounded processing of
-  oversized host blocks.
+- Session XML is preflighted for size, depth, node count, and forbidden DTD or
+  entity declarations before parsing.
+- Defensive file/state limits, cancellable analysis, lower-copy pitch analysis,
+  and bounded processing of oversized host blocks.
+- Curve publication never exposes a write-locked slot to the audio thread, and
+  Gaussian smoothing weights are cached outside real-time processing.
+- Learn revalidates the selected file and temporarily locks curve editing so an
+  asynchronous result cannot overwrite an edit made during analysis.
+- Standalone processing uses its active audio clock instead of a non-playing
+  host-transport flag.
 - Native package definitions for Linux, macOS Universal, Windows x64, and
   Windows ARM64.
 

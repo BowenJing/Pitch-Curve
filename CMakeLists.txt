@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(Contour
-    VERSION 0.7.12
+    VERSION 0.7.13
     DESCRIPTION "Learn and transfer expressive pitch contours"
     LANGUAGES C CXX)
 
@@ -227,7 +227,7 @@ elseif(WIN32)
     set(CPACK_NSIS_DEFINES
         [=[!define MUI_STARTMENUPAGE_DEFAULTFOLDER \"Circus Audio\"]=])
     set(CPACK_NSIS_MENU_LINKS "Standalone/Pitch Curve.exe" "Pitch Curve")
-    set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [=[
+    set(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS [=[
 RMDir /r \"$PROGRAMFILES64\\Contour\"
 RMDir /r \"$SMPROGRAMS\\Contour\"
 RMDir /r \"$SMPROGRAMS\\Pitch Curve\"
@@ -237,6 +237,8 @@ RMDir /r \"$SMPROGRAMS\\PitchTransform\"
 DeleteRegKey SHCTX \"Software\\Sound Tools\\Contour\"
 RMDir /r \"$COMMONFILES64\\VST3\\Contour.vst3\"
 RMDir /r \"$COMMONFILES64\\VST3\\PitchTransform.vst3\"
+]=])
+    set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS [=[
 SetOutPath \"$COMMONFILES64\\VST3\\Pitch Curve.vst3\"
 ClearErrors
 File /r \"\${INST_DIR}\\VST3\\Pitch Curve.vst3\\*.*\"
@@ -249,8 +251,6 @@ SetOutPath \"$INSTDIR\"
 ]=])
     set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS [=[
 RMDir /r \"$COMMONFILES64\\VST3\\Pitch Curve.vst3\"
-RMDir /r \"$COMMONFILES64\\VST3\\PitchTransform.vst3\"
-RMDir /r \"$COMMONFILES64\\VST3\\Contour.vst3\"
 ]=])
 else()
     set(CPACK_GENERATOR "DEB;TGZ")
