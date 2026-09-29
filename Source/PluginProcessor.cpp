@@ -112,7 +112,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout ContourAudioProcessor::creat
 
 void ContourAudioProcessor::prepareToPlay(double sampleRate, int maximumBlockSize)
 {
-    PitchCurveSmoothing::prepare();
     currentSampleRate = sampleRate;
     freeRunningSample = 0;
     hostPlaybackSample = 0;
@@ -145,35 +144,19 @@ bool ContourAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) c
         && output == layouts.getMainInputChannelSet();
 }
 
-float ContourAudioProcessor::curveValueAt(float position,
-                                          const CurveData& curve) const
-{
-    if (curve.pointCount == 0)
-        return 0.0f;
-    const auto begin = curve.points.begin();
-    const auto end = begin + static_cast<std::ptrdiff_t>(curve.pointCount);
-    if (position <= begin->position)
-        return begin->cents;
-    if (position >= (end - 1)->position)
-        return (end - 1)->cents;
-
-    const auto upper = std::lower_bound(begin, end, position,
-        [] (const PitchPoint& point, float value) { return point.position < value; });
-    const auto lower = upper - 1;
-    const float span = upper->position - lower->position;
-    const float proportion = span > 0.0f ? (position - lower->position) / span : 0.0f;
-    return juce::jmap(proportion, lower->cents, upper->cents);
-}
-
 float ContourAudioProcessor::smoothedCurveValueAt(float position,
                                                    const CurveData& curve,
                                                    int smooth) const
 {
     return PitchCurveSmoothing::valueAt(
-        position, smooth,
-        [this, &curve] (float samplePosition)
+        position, smooth, static_cast<int>(curve.pointCount),
+        [&curve] (int index)
         {
-            return curveValueAt(samplePosition, curve);
+            return curve.points[static_cast<size_t>(index)].position;
+        },
+        [&curve] (int index)
+        {
+            return curve.points[static_cast<size_t>(index)].cents;
         });
 }
 

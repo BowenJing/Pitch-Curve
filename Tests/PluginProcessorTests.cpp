@@ -5,6 +5,7 @@
 #include <atomic>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <thread>
 #include <vector>
 
@@ -355,67 +356,102 @@ bool testStoppedTransportResetsDisplay()
 
 bool testSmoothScaleEndpoints()
 {
-    const auto linearValueAt = [] (float position)
+    struct Point
     {
-        return position * 100.0f;
+        float position;
+        float value;
     };
-    const float position = 0.49f;
-    const float hardValue = PitchCurveSmoothing::valueAt(
-        position, 0, linearValueAt);
-    if (std::abs(hardValue - linearValueAt(position)) > 1.0e-6f)
+    const std::vector<Point> points {
+        { 0.00f,   0.0f },
+        { 0.05f, 500.0f },
+        { 0.10f,   0.0f },
+        { 0.15f, -500.0f },
+        { 0.20f,   0.0f },
+        { 0.30f, 250.0f },
+        { 0.40f,   0.0f },
+        { 0.50f, -250.0f },
+        { 0.65f,   0.0f },
+        { 0.80f, 120.0f },
+        { 0.90f,   0.0f },
+        { 1.00f,   0.0f }
+    };
+    const auto smoothedValue = [&] (float position, int smooth)
     {
-        std::cerr << "Smooth 0 must preserve the continuous source curve\n";
+        return PitchCurveSmoothing::valueAt(
+            position, smooth, static_cast<int>(points.size()),
+            [&] (int index) { return points[static_cast<size_t>(index)].position; },
+            [&] (int index) { return points[static_cast<size_t>(index)].value; });
+    };
+
+    constexpr int maximumSmooth = 10;
+    float previousDerivativeJump = std::numeric_limits<float>::max();
+    for (int smooth = 0; smooth <= maximumSmooth; ++smooth)
+    {
+        // Every authored point, including both large rapid features and
+        // smaller slow ones, must retain its exact amplitude at every level.
+        for (const auto& point : points)
+        {
+            if (std::abs(smoothedValue(point.position, smooth) - point.value) > 1.0e-4f)
+            {
+                std::cerr << "Smoothing changed an authored curve amplitude\n";
+                return false;
+            }
+        }
+
+        float maximum = -std::numeric_limits<float>::infinity();
+        float minimum = std::numeric_limits<float>::infinity();
+        for (int sample = 0; sample <= 2000; ++sample)
+        {
+            const float value = smoothedValue(sample / 2000.0f, smooth);
+            if (! std::isfinite(value))
+            {
+                std::cerr << "Smoothing produced a non-finite value\n";
+                return false;
+            }
+            maximum = juce::jmax(maximum, value);
+            minimum = juce::jmin(minimum, value);
+        }
+        if (maximum > 500.001f || minimum < -500.001f)
+        {
+            std::cerr << "Shape-preserving smoothing must not overshoot\n";
+            return false;
+        }
+
+        // The large, fast feature must remain larger than every slower,
+        // smaller feature; smoothing may not reverse their relationship.
+        if (std::abs(smoothedValue(0.05f, smooth))
+            <= std::abs(smoothedValue(0.30f, smooth)))
+        {
+            std::cerr << "Smoothing reversed feature amplitude ordering\n";
+            return false;
+        }
+
+        constexpr float corner = 0.05f;
+        constexpr float epsilon = 0.0001f;
+        const float leftDerivative =
+            (smoothedValue(corner, smooth)
+             - smoothedValue(corner - epsilon, smooth)) / epsilon;
+        const float rightDerivative =
+            (smoothedValue(corner + epsilon, smooth)
+             - smoothedValue(corner, smooth)) / epsilon;
+        const float derivativeJump = std::abs(leftDerivative - rightDerivative);
+        if (derivativeJump > previousDerivativeJump + 5.0f)
+        {
+            std::cerr << "Each Smooth level must round corners progressively\n";
+            return false;
+        }
+        previousDerivativeJump = derivativeJump;
+    }
+
+    if (previousDerivativeJump > 100.0f)
+    {
+        std::cerr << "Smooth 10 must produce a continuous rounded tangent\n";
         return false;
     }
 
-    constexpr int maximumSmooth = 10;
-    const auto flatLinear = [] (float) { return 0.0f; };
-    const auto corner = [] (float position)
+    if (std::abs(smoothedValue(0.0125f, 10) - smoothedValue(0.0125f, 0)) < 10.0f)
     {
-        return std::abs(position - 0.5f) * 100.0f;
-    };
-    float previousCornerValue = PitchCurveSmoothing::valueAt(
-        0.5f, 0, corner);
-    for (int smooth = 1; smooth <= maximumSmooth; ++smooth)
-    {
-        if (std::abs(PitchCurveSmoothing::valueAt(
-                0.25f, smooth, flatLinear)) > 1.0e-6f)
-        {
-            std::cerr << "Smoothing must preserve a flat curve\n";
-            return false;
-        }
-        const float cornerValue = PitchCurveSmoothing::valueAt(
-            0.5f, smooth, corner);
-        if (! std::isfinite(cornerValue)
-            || cornerValue - previousCornerValue < 0.3f)
-        {
-            std::cerr << "Each smooth level must produce a clearly stronger result\n";
-            return false;
-        }
-        previousCornerValue = cornerValue;
-    }
-
-    const auto denseRipple = [] (float position)
-    {
-        return 100.0f * std::sin(6.28318530718f * 40.0f * position);
-    };
-    constexpr float ripplePosition = 0.003125f;
-    float previousRipple = std::abs(PitchCurveSmoothing::valueAt(
-        ripplePosition, 0, denseRipple));
-    for (int smooth = 1; smooth <= maximumSmooth; ++smooth)
-    {
-        const float ripple = std::abs(PitchCurveSmoothing::valueAt(
-            ripplePosition, smooth, denseRipple));
-        if (! std::isfinite(ripple) || ripple > previousRipple + 0.01f)
-        {
-            std::cerr << "Smooth levels must monotonically suppress dense ripple\n";
-            return false;
-        }
-        previousRipple = ripple;
-    }
-    if (previousRipple > 0.1f)
-    {
-        std::cerr << "Smooth 10 must remove fine, dense zig-zag movement\n";
+        std::cerr << "Smooth 10 must visibly round the source polyline\n";
         return false;
     }
     return true;

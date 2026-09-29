@@ -204,44 +204,22 @@ float CurveEditor::displayRangeSemitones() const
     return juce::jlimit(0.0f, 12.0f, 6.0f * amount);
 }
 
-float CurveEditor::linearCentsAt(float position) const
-{
-    if (editablePoints.empty())
-        return 0.0f;
-
-    position -= std::floor(position);
-    if (editablePointsAreUniform && editablePoints.size() > 1)
-    {
-        const float scaled = position * static_cast<float>(editablePoints.size() - 1);
-        const auto lowerIndex = static_cast<size_t>(std::floor(scaled));
-        const auto upperIndex = juce::jmin(lowerIndex + 1, editablePoints.size() - 1);
-        return juce::jmap(scaled - static_cast<float>(lowerIndex),
-                          editablePoints[lowerIndex].cents,
-                          editablePoints[upperIndex].cents);
-    }
-
-    const auto upper = std::lower_bound(
-        editablePoints.begin(), editablePoints.end(), position,
-        [] (const PitchPoint& point, float value) { return point.position < value; });
-    if (upper == editablePoints.begin())
-        return upper->cents;
-    if (upper == editablePoints.end())
-        return editablePoints.back().cents;
-    const auto lower = upper - 1;
-    const float span = upper->position - lower->position;
-    const float proportion = span > 0.0f
-        ? (position - lower->position) / span
-        : 0.0f;
-    return juce::jmap(proportion, lower->cents, upper->cents);
-}
-
 float CurveEditor::displayCentsAt(float position) const
 {
     const int smooth = juce::roundToInt(
         processor.parameters().getRawParameterValue("smooth")->load());
+    if (editablePoints.empty())
+        return 0.0f;
     return PitchCurveSmoothing::valueAt(
-        position, smooth,
-        [this] (float samplePosition) { return linearCentsAt(samplePosition); });
+        position, smooth, static_cast<int>(editablePoints.size()),
+        [this] (int index)
+        {
+            return editablePoints[static_cast<size_t>(index)].position;
+        },
+        [this] (int index)
+        {
+            return editablePoints[static_cast<size_t>(index)].cents;
+        });
 }
 
 void CurveEditor::paint(juce::Graphics& g)
