@@ -56,12 +56,12 @@ float valueAt(float position, int smooth, int pointCount,
     if (smooth == 0)
         return linear;
 
-    // Grow the time footprint across the full control travel. The final two
-    // steps open a little more quickly so 10 is visibly smoother, while the
-    // maximum still spans less than 5% of a cycle on the editor's 256-point
-    // grid and therefore keeps authored changes local.
+    // Grow the time footprint across the full control travel. The upper levels
+    // open progressively faster so 10 produces a clearly rounded contour,
+    // while the maximum still affects only a small neighbourhood around the
+    // current position.
     static constexpr std::array<int, 11> windowRadius {
-        0, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12
+        0, 2, 3, 4, 5, 7, 9, 11, 13, 15, 18
     };
     const int radius = windowRadius[static_cast<size_t>(smooth)];
     // Keep the time footprint independent of source point density. Sparse
@@ -99,8 +99,8 @@ float valueAt(float position, int smooth, int pointCount,
             * (1.0f - extremeness * extremeness);
 
     static constexpr std::array<float, 11> perceptualBlend {
-        0.0f, 0.26f, 0.38f, 0.49f, 0.59f, 0.68f,
-        0.77f, 0.84f, 0.91f, 0.96f, 1.0f
+        0.0f, 0.24f, 0.35f, 0.46f, 0.56f, 0.66f,
+        0.75f, 0.83f, 0.90f, 0.96f, 1.0f
     };
     const float blend =
         perceptualBlend[static_cast<size_t>(smooth)] * rangePreservation;

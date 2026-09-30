@@ -556,7 +556,7 @@ bool testSmoothScaleEndpoints()
         const float position = densePoints[static_cast<size_t>(i)].position;
         const float difference =
             std::abs(editedValue(position) - denseValue(position, 10));
-        if (circularDistance <= 13)
+        if (circularDistance <= 19)
             changedLocally = changedLocally || difference > 0.01f;
         else if (difference > 1.0e-4f)
         {
