@@ -277,10 +277,7 @@ void CurveEditor::paint(juce::Graphics& g)
     else
     {
         juce::Path curve;
-        // Oversample the monotone smoothing path so rounded extrema remain
-        // visible even in a wide editor instead of being reduced to one sharp
-        // line segment per control point.
-        constexpr int displaySamples = 1024;
+        constexpr int displaySamples = 256;
         for (int i = 0; i < displaySamples; ++i)
         {
             const float position = static_cast<float>(i) / (displaySamples - 1);

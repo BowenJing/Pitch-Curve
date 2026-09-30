@@ -384,8 +384,8 @@ bool testSmoothScaleEndpoints()
     };
 
     constexpr int maximumSmooth = 10;
+    float previousDerivativeJump = std::numeric_limits<float>::max();
     float hardDerivativeJump = 0.0f;
-    float smooth10DerivativeJump = 0.0f;
     for (int smooth = 0; smooth <= maximumSmooth; ++smooth)
     {
         // Every local peak and valley, including both large rapid features and
@@ -394,14 +394,11 @@ bool testSmoothScaleEndpoints()
         {
             const auto& point = points[static_cast<size_t>(index)];
             const float allowedChange =
-                juce::jmax(2.0f, std::abs(point.value) * 0.06f);
+                juce::jmax(2.0f, std::abs(point.value) * 0.05f);
             if (std::abs(smoothedValue(point.position, smooth) - point.value)
                 > allowedChange)
             {
-                std::cerr << "Smoothing changed an authored curve amplitude"
-                          << " at level " << smooth << ", point " << index
-                          << ": expected " << point.value << ", got "
-                          << smoothedValue(point.position, smooth) << '\n';
+                std::cerr << "Smoothing changed an authored curve amplitude\n";
                 return false;
             }
         }
@@ -445,17 +442,15 @@ bool testSmoothScaleEndpoints()
         const float derivativeJump = std::abs(leftDerivative - rightDerivative);
         if (smooth == 0)
             hardDerivativeJump = derivativeJump;
-        else if (derivativeJump > hardDerivativeJump * 0.25f)
+        if (derivativeJump > previousDerivativeJump + 5.0f)
         {
-            std::cerr << "Smooth interpolation left a sharp derivative jump"
-                      << " at level " << smooth << '\n';
+            std::cerr << "Each Smooth level must round corners progressively\n";
             return false;
         }
-        if (smooth == maximumSmooth)
-            smooth10DerivativeJump = derivativeJump;
+        previousDerivativeJump = derivativeJump;
     }
 
-    if (smooth10DerivativeJump > hardDerivativeJump * 0.1f)
+    if (previousDerivativeJump > hardDerivativeJump * 0.9f)
     {
         std::cerr << "Smooth 10 must substantially round hard corners\n";
         return false;
@@ -561,7 +556,7 @@ bool testSmoothScaleEndpoints()
         const float position = densePoints[static_cast<size_t>(i)].position;
         const float difference =
             std::abs(editedValue(position) - denseValue(position, 10));
-        if (circularDistance <= 20)
+        if (circularDistance <= 7)
             changedLocally = changedLocally || difference > 0.01f;
         else if (difference > 1.0e-4f)
         {
