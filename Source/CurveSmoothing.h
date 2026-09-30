@@ -54,53 +54,104 @@ float valueAt(float position, int smooth, int pointCount,
     if (smooth == 0)
         return linear;
 
-    const auto isExtremum = [&] (int index)
+    int globalMinimum = 0;
+    float minimumValue = valueAtPoint(0);
+    float maximumValue = minimumValue;
+    for (int index = 1; index < uniquePointCount; ++index)
     {
-        const int before = (index + uniquePointCount - 1) % uniquePointCount;
-        const int after = (index + 1) % uniquePointCount;
         const float value = valueAtPoint(index);
-        const float incoming = value - valueAtPoint(before);
-        const float outgoing = valueAtPoint(after) - value;
-        return (incoming > 0.0f && outgoing <= 0.0f)
-            || (incoming < 0.0f && outgoing >= 0.0f);
-    };
-
-    int leftAnchor = -1;
-    int rightAnchor = -1;
-    for (int offset = 0; offset < uniquePointCount; ++offset)
-    {
-        const int candidate =
-            (current - offset + uniquePointCount) % uniquePointCount;
-        if (isExtremum(candidate))
+        if (value < minimumValue)
         {
-            leftAnchor = candidate;
-            break;
+            minimumValue = value;
+            globalMinimum = index;
         }
+        maximumValue = std::max(maximumValue, value);
     }
-    for (int offset = 0; offset < uniquePointCount; ++offset)
-    {
-        const int candidate = (next + offset) % uniquePointCount;
-        if (isExtremum(candidate))
-        {
-            rightAnchor = candidate;
-            break;
-        }
-    }
-    if (leftAnchor < 0 || rightAnchor < 0 || leftAnchor == rightAnchor)
+    const float valueRange = maximumValue - minimumValue;
+    if (valueRange <= 1.0e-6f)
         return linear;
 
-    float leftPosition = positionAt(leftAnchor);
-    float rightPosition = positionAt(rightAnchor);
-    if (leftPosition > position)
-        leftPosition -= 1.0f;
-    if (rightPosition <= position)
-        rightPosition += 1.0f;
+    // A small hysteresis rejects point-to-point drawing/detection jitter that
+    // would otherwise make every sample an "extremum" and leave no interval
+    // long enough to round visibly. It scales with the contour, while the
+    // two-cent floor still allows genuinely subtle pitch motion to survive.
+    const float turningThreshold = std::max(2.0f, valueRange * 0.015f);
+    float targetPosition = position;
+    const float startPosition = positionAt(globalMinimum);
+    if (targetPosition < startPosition)
+        targetPosition += 1.0f;
+
+    int leftAnchor = globalMinimum;
+    int rightAnchor = -1;
+    float leftPosition = startPosition;
+    float rightPosition = 0.0f;
+    bool seekingMaximum = true;
+    int candidate = globalMinimum;
+    float candidatePosition = startPosition;
+    float candidateValue = minimumValue;
+    for (int step = 1; step <= uniquePointCount * 2; ++step)
+    {
+        const int unwrappedIndex = globalMinimum + step;
+        const int index = unwrappedIndex % uniquePointCount;
+        const float unwrappedPosition =
+            positionAt(index)
+            + static_cast<float>(unwrappedIndex / uniquePointCount);
+        const float value = valueAtPoint(index);
+
+        bool completedTurn = false;
+        if (seekingMaximum)
+        {
+            if (value > candidateValue)
+            {
+                candidate = index;
+                candidatePosition = unwrappedPosition;
+                candidateValue = value;
+            }
+            else if (candidateValue - value >= turningThreshold)
+            {
+                completedTurn = true;
+                seekingMaximum = false;
+            }
+        }
+        else
+        {
+            if (value < candidateValue)
+            {
+                candidate = index;
+                candidatePosition = unwrappedPosition;
+                candidateValue = value;
+            }
+            else if (value - candidateValue >= turningThreshold)
+            {
+                completedTurn = true;
+                seekingMaximum = true;
+            }
+        }
+
+        if (! completedTurn)
+            continue;
+
+        if (candidatePosition >= targetPosition)
+        {
+            rightAnchor = candidate;
+            rightPosition = candidatePosition;
+            break;
+        }
+        leftAnchor = candidate;
+        leftPosition = candidatePosition;
+        candidate = index;
+        candidatePosition = unwrappedPosition;
+        candidateValue = value;
+    }
+    if (rightAnchor < 0 || leftAnchor == rightAnchor)
+        return linear;
+
     const float anchorWidth = rightPosition - leftPosition;
     if (anchorWidth <= 0.0f)
         return linear;
 
     const float anchorProportion =
-        std::clamp((position - leftPosition) / anchorWidth, 0.0f, 1.0f);
+        std::clamp((targetPosition - leftPosition) / anchorWidth, 0.0f, 1.0f);
     constexpr float pi = 3.14159265358979323846f;
     const float cosineBlend = 0.5f
         - 0.5f * std::cos(pi * anchorProportion);

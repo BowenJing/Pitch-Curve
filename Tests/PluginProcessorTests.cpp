@@ -455,6 +455,67 @@ bool testSmoothScaleEndpoints()
         std::cerr << "Smooth 10 must visibly change values on the control grid\n";
         return false;
     }
+
+    // Match the editor's 256-segment grid and add alternating low-level jitter.
+    // The jitter must not turn every sample into an anchor and make all Smooth
+    // settings look identical.
+    std::vector<Point> densePoints;
+    densePoints.reserve(257);
+    constexpr float pi = 3.14159265358979323846f;
+    for (int i = 0; i <= 256; ++i)
+    {
+        const float position = static_cast<float>(i) / 256.0f;
+        float value = 0.0f;
+        if (position < 0.5f)
+            value = 500.0f * (2.0f / pi)
+                  * std::asin(std::sin(8.0f * pi * position));
+        else
+            value = 200.0f * (2.0f / pi)
+                  * std::asin(std::sin(4.0f * pi * (position - 0.5f)));
+        if (i != 0 && i != 256)
+            value += (i % 2 == 0 ? 3.0f : -3.0f);
+        densePoints.push_back({ position, value });
+    }
+    densePoints.back().value = densePoints.front().value;
+    const auto denseValue = [&] (float position, int smooth)
+    {
+        return PitchCurveSmoothing::valueAt(
+            position, smooth, static_cast<int>(densePoints.size()),
+            [&] (int index)
+            {
+                return densePoints[static_cast<size_t>(index)].position;
+            },
+            [&] (int index)
+            {
+                return densePoints[static_cast<size_t>(index)].value;
+            });
+    };
+
+    float totalVisibleChange = 0.0f;
+    float largeAmplitude = 0.0f;
+    float smallAmplitude = 0.0f;
+    for (int i = 0; i < 256; ++i)
+    {
+        const float position = densePoints[static_cast<size_t>(i)].position;
+        totalVisibleChange +=
+            std::abs(denseValue(position, 10) - denseValue(position, 0));
+        const float magnitude = std::abs(denseValue(position, 10));
+        if (position < 0.5f)
+            largeAmplitude = juce::jmax(largeAmplitude, magnitude);
+        else
+            smallAmplitude = juce::jmax(smallAmplitude, magnitude);
+    }
+    if (totalVisibleChange < 1000.0f)
+    {
+        std::cerr << "Dense editor points made Smooth visually ineffective\n";
+        return false;
+    }
+    if (largeAmplitude < 490.0f || smallAmplitude < 190.0f
+        || largeAmplitude <= smallAmplitude)
+    {
+        std::cerr << "Dense smoothing failed to preserve feature amplitudes\n";
+        return false;
+    }
     return true;
 }
 
