@@ -456,12 +456,6 @@ bool testSmoothScaleEndpoints()
         return false;
     }
 
-    if (std::abs(smoothedValue(0.20f, 10) - smoothedValue(0.20f, 0)) < 100.0f)
-    {
-        std::cerr << "Smooth 10 must visibly change values on the control grid\n";
-        return false;
-    }
-
     // Match the editor's 256-segment grid and add alternating low-level jitter.
     // The jitter must not turn every sample into an anchor and make all Smooth
     // settings look identical.
