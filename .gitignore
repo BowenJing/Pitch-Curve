@@ -3,6 +3,7 @@
 /build-linux-gcc/
 /build-windows/
 /build-sanitize/
+/build-asan*/
 /.xwin/
 /.xwin-cache/
 /_CPack_Packages/
