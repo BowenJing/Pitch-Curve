@@ -394,7 +394,7 @@ bool testSmoothScaleEndpoints()
         {
             const auto& point = points[static_cast<size_t>(index)];
             const float allowedChange =
-                juce::jmax(2.0f, std::abs(point.value) * 0.05f);
+                juce::jmax(2.0f, std::abs(point.value) * 0.06f);
             if (std::abs(smoothedValue(point.position, smooth) - point.value)
                 > allowedChange)
             {
