@@ -4,7 +4,7 @@ Pitch Curve is a cross-platform audio plug-in that captures the small pitch move
 of one performance and applies them to another. A contour can also be drawn
 directly in the editor.
 
-## Version 0.7.21
+## Version 0.7.22
 
 - Drag or browse for WAV, AIFF, FLAC, MP3, or OGG audio.
 - YIN-based monophonic pitch tracking with confidence gating and median
@@ -17,7 +17,8 @@ directly in the editor.
   levels 1–10 use progressively wider fixed local windows. A local-range gate
   protects peaks and valleys while shoulders and corners become rounder, with
   bounded influence and no overshoot. The wider progression makes the full
-  0–10 adjustment more apparent without changing feature ordering.
+  0–10 adjustment more apparent without changing feature ordering, and the
+  upper steps use a slightly broader window for a smoother maximum setting.
 - Pitch processing reads the same smoothed curve shown in the editor at each
   control-block midpoint, without an additional hidden 25 ms pitch ramp.
 - 30 FPS second/frame duration controls up to 60 seconds, with automatic frame carry.
