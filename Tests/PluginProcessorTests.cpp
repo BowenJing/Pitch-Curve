@@ -384,8 +384,8 @@ bool testSmoothScaleEndpoints()
     };
 
     constexpr int maximumSmooth = 10;
-    float previousDerivativeJump = std::numeric_limits<float>::max();
     float hardDerivativeJump = 0.0f;
+    float smooth10DerivativeJump = 0.0f;
     for (int smooth = 0; smooth <= maximumSmooth; ++smooth)
     {
         // Every local peak and valley, including both large rapid features and
@@ -445,18 +445,17 @@ bool testSmoothScaleEndpoints()
         const float derivativeJump = std::abs(leftDerivative - rightDerivative);
         if (smooth == 0)
             hardDerivativeJump = derivativeJump;
-        if (derivativeJump > previousDerivativeJump + 5.0f)
+        else if (derivativeJump > hardDerivativeJump * 0.25f)
         {
-            std::cerr << "Each Smooth level must round corners progressively"
-                      << " at level " << smooth << ": previous "
-                      << previousDerivativeJump << ", current "
-                      << derivativeJump << '\n';
+            std::cerr << "Smooth interpolation left a sharp derivative jump"
+                      << " at level " << smooth << '\n';
             return false;
         }
-        previousDerivativeJump = derivativeJump;
+        if (smooth == maximumSmooth)
+            smooth10DerivativeJump = derivativeJump;
     }
 
-    if (previousDerivativeJump > hardDerivativeJump * 0.9f)
+    if (smooth10DerivativeJump > hardDerivativeJump * 0.1f)
     {
         std::cerr << "Smooth 10 must substantially round hard corners\n";
         return false;
