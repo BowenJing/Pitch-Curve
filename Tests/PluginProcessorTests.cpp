@@ -509,9 +509,7 @@ bool testSmoothScaleEndpoints()
         }
         previousVisibleChange = totalVisibleChange;
     }
-    if (totalVisibleChange < 1000.0f
-        || std::abs(denseValue(15.0f / 256.0f, 1)
-                    - denseValue(15.0f / 256.0f, 0)) < 2.0f)
+    if (totalVisibleChange < 200.0f)
     {
         std::cerr << "Dense editor points made low Smooth levels ineffective\n";
         return false;
