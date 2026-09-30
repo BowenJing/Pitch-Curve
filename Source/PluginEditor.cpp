@@ -676,6 +676,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     {
         if (! amountDirty)
             updateAmountText();
+        curveEditor.repaint();
     };
     amountAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processor.parameters(), "amount", amount);
@@ -694,6 +695,7 @@ ContourAudioProcessorEditor::ContourAudioProcessorEditor(ContourAudioProcessor& 
     {
         if (! smoothDirty)
             updateSmoothText();
+        curveEditor.repaint();
     };
     smoothAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
         processor.parameters(), "smooth", smooth);
