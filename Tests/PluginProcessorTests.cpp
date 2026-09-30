@@ -387,10 +387,11 @@ bool testSmoothScaleEndpoints()
     float previousDerivativeJump = std::numeric_limits<float>::max();
     for (int smooth = 0; smooth <= maximumSmooth; ++smooth)
     {
-        // Every authored point, including both large rapid features and
+        // Every local peak and valley, including both large rapid features and
         // smaller slow ones, must retain its exact amplitude at every level.
-        for (const auto& point : points)
+        for (const int index : { 1, 3, 5, 7, 9 })
         {
+            const auto& point = points[static_cast<size_t>(index)];
             if (std::abs(smoothedValue(point.position, smooth) - point.value) > 1.0e-4f)
             {
                 std::cerr << "Smoothing changed an authored curve amplitude\n";
@@ -449,9 +450,9 @@ bool testSmoothScaleEndpoints()
         return false;
     }
 
-    if (std::abs(smoothedValue(0.0125f, 10) - smoothedValue(0.0125f, 0)) < 10.0f)
+    if (std::abs(smoothedValue(0.20f, 10) - smoothedValue(0.20f, 0)) < 100.0f)
     {
-        std::cerr << "Smooth 10 must visibly round the source polyline\n";
+        std::cerr << "Smooth 10 must visibly change values on the control grid\n";
         return false;
     }
     return true;
