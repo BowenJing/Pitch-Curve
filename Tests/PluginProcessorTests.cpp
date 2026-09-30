@@ -492,23 +492,40 @@ bool testSmoothScaleEndpoints()
     };
 
     float totalVisibleChange = 0.0f;
+    float previousVisibleChange = 0.0f;
+    for (int smooth = 1; smooth <= 10; ++smooth)
+    {
+        totalVisibleChange = 0.0f;
+        for (int i = 0; i < 256; ++i)
+        {
+            const float position = densePoints[static_cast<size_t>(i)].position;
+            totalVisibleChange +=
+                std::abs(denseValue(position, smooth) - denseValue(position, 0));
+        }
+        if (totalVisibleChange <= previousVisibleChange + 20.0f)
+        {
+            std::cerr << "Smooth levels must produce visible progressive changes\n";
+            return false;
+        }
+        previousVisibleChange = totalVisibleChange;
+    }
+    if (totalVisibleChange < 1000.0f
+        || std::abs(denseValue(0.046875f, 1) - denseValue(0.046875f, 0)) < 2.0f)
+    {
+        std::cerr << "Dense editor points made low Smooth levels ineffective\n";
+        return false;
+    }
+
     float largeAmplitude = 0.0f;
     float smallAmplitude = 0.0f;
     for (int i = 0; i < 256; ++i)
     {
         const float position = densePoints[static_cast<size_t>(i)].position;
-        totalVisibleChange +=
-            std::abs(denseValue(position, 10) - denseValue(position, 0));
         const float magnitude = std::abs(denseValue(position, 10));
         if (position < 0.5f)
             largeAmplitude = juce::jmax(largeAmplitude, magnitude);
         else
             smallAmplitude = juce::jmax(smallAmplitude, magnitude);
-    }
-    if (totalVisibleChange < 1000.0f)
-    {
-        std::cerr << "Dense editor points made Smooth visually ineffective\n";
-        return false;
     }
     if (largeAmplitude < 490.0f || smallAmplitude < 190.0f
         || largeAmplitude <= smallAmplitude)

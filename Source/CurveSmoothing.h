@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace PitchCurveSmoothing
@@ -158,7 +159,14 @@ float valueAt(float position, int smooth, int pointCount,
     const float shapePreserving =
         valueAtPoint(leftAnchor)
         + cosineBlend * (valueAtPoint(rightAnchor) - valueAtPoint(leftAnchor));
-    const float blend = static_cast<float>(smooth) / 10.0f;
+    // A linear 0-1 blend leaves the first few integer steps below a visible
+    // pixel at typical plug-in sizes. These perceptual steps make level 1
+    // clearly but gently active while retaining useful separation up to 10.
+    static constexpr std::array<float, 11> perceptualBlend {
+        0.0f, 0.25f, 0.36f, 0.47f, 0.57f, 0.66f,
+        0.74f, 0.82f, 0.89f, 0.95f, 1.0f
+    };
+    const float blend = perceptualBlend[static_cast<size_t>(smooth)];
     return linear + blend * (shapePreserving - linear);
 }
 }
