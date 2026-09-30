@@ -398,7 +398,10 @@ bool testSmoothScaleEndpoints()
             if (std::abs(smoothedValue(point.position, smooth) - point.value)
                 > allowedChange)
             {
-                std::cerr << "Smoothing changed an authored curve amplitude\n";
+                std::cerr << "Smoothing changed an authored curve amplitude"
+                          << " at level " << smooth << ", point " << index
+                          << ": expected " << point.value << ", got "
+                          << smoothedValue(point.position, smooth) << '\n';
                 return false;
             }
         }
