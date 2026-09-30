@@ -100,7 +100,7 @@ float valueAt(float position, int smooth, int pointCount,
             std::abs(centre - localMidpoint) / halfRange, 0.0f, 1.0f);
         // Cubic interpolation provides the rounded cap, so extrema themselves
         // need only a small residual filter blend to retain authored depth.
-        constexpr float extremaSmoothingFloor = 0.07f;
+        constexpr float extremaSmoothingFloor = 0.05f;
         const float rangePreservation =
             extremaSmoothingFloor
             + (1.0f - extremaSmoothingFloor)
