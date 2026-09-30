@@ -52,7 +52,7 @@ jobs:
             Pitch-Curve-*.sha256
           if-no-files-found: error
       - name: Publish unsigned macOS 0.8 package
-        if: github.ref == 'refs/tags/v0.8-macos-build'
+        if: startsWith(github.ref, 'refs/tags/v0.8-macos-build')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -63,6 +63,11 @@ jobs:
           gh release upload v0.8 Pitch-Curve-*.pkg Pitch-Curve-*.pkg.sha256 --clobber
           git tag macos-ready-0.8
           git push origin macos-ready-0.8
+      - name: Mark macOS build failure
+        if: failure() && startsWith(github.ref, 'refs/tags/v0.8-macos-build')
+        run: |
+          git tag macos-failed-0.8
+          git push origin macos-failed-0.8
 
   windows:
     strategy:
