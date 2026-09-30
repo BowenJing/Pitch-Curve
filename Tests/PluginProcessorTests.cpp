@@ -533,6 +533,43 @@ bool testSmoothScaleEndpoints()
         std::cerr << "Dense smoothing failed to preserve feature amplitudes\n";
         return false;
     }
+
+    auto editedPoints = densePoints;
+    editedPoints[100].value += 80.0f;
+    const auto editedValue = [&] (float position)
+    {
+        return PitchCurveSmoothing::valueAt(
+            position, 10, static_cast<int>(editedPoints.size()),
+            [&] (int index)
+            {
+                return editedPoints[static_cast<size_t>(index)].position;
+            },
+            [&] (int index)
+            {
+                return editedPoints[static_cast<size_t>(index)].value;
+            });
+    };
+    bool changedLocally = false;
+    for (int i = 0; i < 256; ++i)
+    {
+        const int directDistance = std::abs(i - 100);
+        const int circularDistance = juce::jmin(directDistance, 256 - directDistance);
+        const float position = densePoints[static_cast<size_t>(i)].position;
+        const float difference =
+            std::abs(editedValue(position) - denseValue(position, 10));
+        if (circularDistance <= 7)
+            changedLocally = changedLocally || difference > 0.01f;
+        else if (difference > 1.0e-4f)
+        {
+            std::cerr << "A local edit changed the curve outside its fixed window\n";
+            return false;
+        }
+    }
+    if (! changedLocally)
+    {
+        std::cerr << "A local edit did not affect its own neighbourhood\n";
+        return false;
+    }
     return true;
 }
 
