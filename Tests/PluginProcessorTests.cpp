@@ -447,7 +447,10 @@ bool testSmoothScaleEndpoints()
             hardDerivativeJump = derivativeJump;
         if (derivativeJump > previousDerivativeJump + 5.0f)
         {
-            std::cerr << "Each Smooth level must round corners progressively\n";
+            std::cerr << "Each Smooth level must round corners progressively"
+                      << " at level " << smooth << ": previous "
+                      << previousDerivativeJump << ", current "
+                      << derivativeJump << '\n';
             return false;
         }
         previousDerivativeJump = derivativeJump;
