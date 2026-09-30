@@ -88,7 +88,7 @@ bool isSafeStatePayload(const void* data, int size)
 }
 
 ContourAudioProcessor::ContourAudioProcessor()
-    : AudioProcessor(BusesProperties()
+    : juce::AudioProcessor(juce::AudioProcessor::BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       state(*this, nullptr, "PARAMETERS", createParameterLayout())

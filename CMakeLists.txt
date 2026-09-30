@@ -90,6 +90,7 @@ target_sources(Contour PRIVATE
     Source/PluginEditor.h)
 
 target_compile_definitions(Contour PUBLIC
+    DONT_SET_USING_JUCE_NAMESPACE=1
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
@@ -178,6 +179,7 @@ if(BUILD_TESTING)
         Source/PluginEditor.h)
     target_include_directories(ContourProcessorTests PRIVATE Source)
     target_compile_definitions(ContourProcessorTests PRIVATE
+        DONT_SET_USING_JUCE_NAMESPACE=1
         JUCE_USE_CURL=0
         JUCE_WEB_BROWSER=0
         JUCE_VST3_CAN_REPLACE_VST2=0
