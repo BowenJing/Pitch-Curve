@@ -34,6 +34,8 @@ jobs:
 
   macos:
     runs-on: macos-15
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - run: >
@@ -49,6 +51,18 @@ jobs:
             Pitch-Curve-*.pkg
             Pitch-Curve-*.sha256
           if-no-files-found: error
+      - name: Publish unsigned macOS 0.8 package
+        if: github.ref == 'refs/tags/v0.8-macos-build'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view v0.8 >/dev/null 2>&1 \
+            || gh release create v0.8 --verify-tag \
+                 --title "Pitch Curve 0.8" \
+                 --notes "Unsigned development build. Includes Universal VST3, AU, and Standalone formats."
+          gh release upload v0.8 Pitch-Curve-*.pkg Pitch-Curve-*.pkg.sha256 --clobber
+          git tag macos-ready-0.8
+          git push origin macos-ready-0.8
 
   windows:
     strategy:
