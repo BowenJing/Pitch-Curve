@@ -148,6 +148,47 @@ bool testContourWithOversizedBlocks()
     return true;
 }
 
+bool testMonoAndStereoHostLayouts()
+{
+    const auto mono = juce::AudioChannelSet::mono();
+    const auto stereo = juce::AudioChannelSet::stereo();
+    const ContourAudioProcessor::BusesLayout monoLayout { { mono }, { mono } };
+    const ContourAudioProcessor::BusesLayout stereoLayout { { stereo }, { stereo } };
+    const ContourAudioProcessor::BusesLayout mismatchedLayout { { mono }, { stereo } };
+
+    ContourAudioProcessor processor;
+    if (! processor.isBusesLayoutSupported(monoLayout)
+        || ! processor.isBusesLayoutSupported(stereoLayout)
+        || processor.isBusesLayoutSupported(mismatchedLayout)
+        || ! processor.setBusesLayout(monoLayout))
+    {
+        std::cerr << "Mono/stereo DAW bus-layout negotiation is incorrect\n";
+        return false;
+    }
+
+    processor.prepareToPlay(96000.0, 1);
+    processor.setContour({ { 0.0f, -25.0f, 1.0f },
+                           { 0.5f, 25.0f, 1.0f },
+                           { 1.0f, -25.0f, 1.0f } }, 1.0f);
+    juce::MidiBuffer midi;
+    juce::AudioBuffer<float> emptyBlock(1, 0);
+    processor.processBlock(emptyBlock, midi);
+
+    juce::AudioBuffer<float> monoBlock(1, 257);
+    monoBlock.clear();
+    monoBlock.setSample(0, 0, 1.0f);
+    processor.processBlock(monoBlock, midi);
+    for (int sample = 0; sample < monoBlock.getNumSamples(); ++sample)
+    {
+        if (! std::isfinite(monoBlock.getSample(0, sample)))
+        {
+            std::cerr << "Mono high-rate processing produced a non-finite sample\n";
+            return false;
+        }
+    }
+    return true;
+}
+
 bool testStateRoundTripAndBounds()
 {
     ContourAudioProcessor source;
@@ -632,6 +673,7 @@ int main()
     juce::ScopedJuceInitialiser_GUI initialiseJuce;
     if (! testLatencyMatchedBypass()
         || ! testContourWithOversizedBlocks()
+        || ! testMonoAndStereoHostLayouts()
         || ! testStateRoundTripAndBounds()
         || ! testDefaultsAndDurationLimit()
         || ! testStoppedTransportResetsDisplay()
