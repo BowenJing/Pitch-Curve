@@ -422,15 +422,6 @@ void CurveEditor::mouseUp(const juce::MouseEvent&)
     previousDrawPosition.reset();
 }
 
-void CurveEditor::mouseDoubleClick(const juce::MouseEvent&)
-{
-    previousDrawPosition.reset();
-    editablePoints.clear();
-    editablePointsAreUniform = false;
-    processor.setContour({}, processor.getContourDuration());
-    repaint();
-}
-
 void CurveEditor::timerCallback()
 {
     const double nowSeconds = juce::Time::getMillisecondCounterHiRes() / 1000.0;

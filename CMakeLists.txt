@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 project(Contour
-    VERSION 0.7.19
+    VERSION 0.7.20
     DESCRIPTION "Learn and transfer expressive pitch contours"
     LANGUAGES C CXX)
 
