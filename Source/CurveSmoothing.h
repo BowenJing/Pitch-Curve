@@ -88,7 +88,10 @@ float valueAt(float position, int smooth, int pointCount,
     const float halfRange = 0.5f * (localMaximum - localMinimum);
     const float extremeness = std::clamp(
         std::abs(linear - localMidpoint) / halfRange, 0.0f, 1.0f);
-    constexpr float extremaSmoothingFloor = 0.18f;
+    // Wider windows should round more of each shoulder, not pull the authored
+    // peak itself towards the local mean. Keep only a small residual blend at
+    // exact extrema so their amplitude remains effectively unchanged.
+    constexpr float extremaSmoothingFloor = 0.08f;
     const float rangePreservation =
         extremaSmoothingFloor
         + (1.0f - extremaSmoothingFloor)
