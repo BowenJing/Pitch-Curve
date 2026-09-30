@@ -311,6 +311,26 @@ bool testDefaultsAndDurationLimit()
         return false;
     }
 
+    if (auto* amount = processor.parameters().getParameter("amount"))
+    {
+        const auto rawValueForText = [amount] (const juce::String& text)
+        {
+            return amount->convertFrom0to1(amount->getValueForText(text));
+        };
+        if (std::abs(rawValueForText("0") - 0.0f) > 1.0e-6f
+            || std::abs(rawValueForText("100%") - 1.0f) > 1.0e-6f
+            || std::abs(rawValueForText("200") - 2.0f) > 1.0e-6f)
+        {
+            std::cerr << "Host Amount percentage text must round-trip\n";
+            return false;
+        }
+    }
+    else
+    {
+        std::cerr << "Amount parameter is missing\n";
+        return false;
+    }
+
     processor.setContour({ { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f, 1.0f } }, 2.0f);
     processor.setDurationLocked(true);
     const float lockedDuration = processor.setLearnedContour(

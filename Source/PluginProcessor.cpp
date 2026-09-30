@@ -104,7 +104,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout ContourAudioProcessor::creat
         juce::ParameterID { "amount", 1 }, "Amount",
         juce::NormalisableRange<float>(0.0f, 2.0f, 0.01f), 1.0f,
         juce::AudioParameterFloatAttributes().withLabel("%").withStringFromValueFunction(
-            [] (float value, int) { return juce::String(juce::roundToInt(value * 100.0f)); })));
+            [] (float value, int)
+            {
+                return juce::String(juce::roundToInt(value * 100.0f));
+            }).withValueFromStringFunction(
+            [] (const juce::String& text)
+            {
+                return text.removeCharacters("%").trim().getFloatValue() / 100.0f;
+            })));
     parameters.push_back(std::make_unique<juce::AudioParameterInt>(
         juce::ParameterID { "smooth", 1 }, "Smooth", 0, 10, 5));
     return { parameters.begin(), parameters.end() };

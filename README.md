@@ -4,7 +4,7 @@ Pitch Curve is a cross-platform audio plug-in that captures the small pitch move
 of one performance and applies them to another. A contour can also be drawn
 directly in the editor.
 
-## Version 0.7.26
+## Version 0.7.27
 
 - Drag or browse for WAV, AIFF, FLAC, MP3, or OGG audio.
 - YIN-based monophonic pitch tracking with confidence gating and median
@@ -38,6 +38,7 @@ directly in the editor.
 - Gap-free freehand drawing and an explicit Clear Curve action. Double-clicking
   the curve editor does not clear the contour.
 - 0–200% contour amount.
+- Host parameter text such as `100%` round-trips to the correct Amount value.
 - Signalsmith Stretch high-quality, phase-coherent pitch processing.
 - VST3 and standalone builds on macOS and Windows; Audio Unit builds on macOS.
 - Session state restores both the parameter and learned/drawn contour.
