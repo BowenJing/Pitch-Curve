@@ -57,8 +57,29 @@ jobs:
       - name: Package macOS Universal
         run: |
           set -o pipefail
-          cpack --config build/CPackConfig.cmake -C Release -G productbuild \
+          stage="$RUNNER_TEMP/pitch-curve-root"
+          component="$RUNNER_TEMP/Pitch-Curve-component.pkg"
+          rm -rf "$stage"
+          cmake --install build --config Release --prefix "$stage" \
+            --component ContourRuntime 2>&1 | tee -a "$RUNNER_TEMP/macos-build.log"
+          binaries=(
+            "$stage/Library/Audio/Plug-Ins/VST3/Pitch Curve.vst3/Contents/MacOS/Pitch Curve"
+            "$stage/Library/Audio/Plug-Ins/Components/Pitch Curve.component/Contents/MacOS/Pitch Curve"
+            "$stage/Applications/Pitch Curve.app/Contents/MacOS/Pitch Curve"
+          )
+          for binary in "${binaries[@]}"; do
+            test -f "$binary"
+            lipo -verify_arch arm64 x86_64 "$binary"
+          done
+          pkgbuild --root "$stage" \
+            --identifier audio.circus.pitchcurve \
+            --version 0.8 --install-location / "$component" \
             2>&1 | tee -a "$RUNNER_TEMP/macos-build.log"
+          productbuild --package "$component" \
+            Pitch-Curve-0.8-macOS-Universal.pkg \
+            2>&1 | tee -a "$RUNNER_TEMP/macos-build.log"
+          shasum -a 256 Pitch-Curve-0.8-macOS-Universal.pkg \
+            > Pitch-Curve-0.8-macOS-Universal.pkg.sha256
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pitch-curve-macos-universal
@@ -87,14 +108,14 @@ jobs:
           cp Pitch-Curve-*.pkg.sha256 /tmp/pitch-curve-package/
           split -b 45m Pitch-Curve-*.pkg \
             /tmp/pitch-curve-package/Pitch-Curve-0.8-macOS-Universal.pkg.part-
-          git checkout --orphan macos-artifact-0.8
+          git checkout --orphan "macos-artifact-0.8-${GITHUB_RUN_ID}"
           git rm -rf .
           cp /tmp/pitch-curve-package/* .
           git add -f Pitch-Curve-*.pkg.sha256 Pitch-Curve-*.pkg.part-*
           git config user.name github-actions
           git config user.email github-actions@github.com
           git commit -m "Publish macOS 0.8 package"
-          git push origin HEAD:refs/heads/macos-artifact-0.8
+          git push origin "HEAD:refs/heads/macos-artifact-0.8-${GITHUB_RUN_ID}"
       - name: Mark macOS build failure
         if: failure() && startsWith(github.ref, 'refs/tags/v0.8-macos-build')
         run: |
