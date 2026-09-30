@@ -26,7 +26,7 @@ FetchContent_Declare(
 
 FetchContent_Declare(
     signalsmith_stretch
-    GIT_REPOSITORY https://git.signalsmith-audio.co.uk/Signalsmith-Audio/signalsmith-stretch.git
+    GIT_REPOSITORY https://github.com/Signalsmith-Audio/signalsmith-stretch.git
     GIT_TAG 90d6c686eb55b1512575d6d8b581b1959b1e91ac)
 FetchContent_MakeAvailable(signalsmith_stretch)
 
