@@ -92,7 +92,7 @@ float valueAt(float position, int smooth, int pointCount,
     // Wider windows should round more of each shoulder, not pull the authored
     // peak itself towards the local mean. Keep only a small residual blend at
     // exact extrema so their amplitude remains effectively unchanged.
-    constexpr float extremaSmoothingFloor = 0.11f;
+    constexpr float extremaSmoothingFloor = 0.103f;
     const float rangePreservation =
         extremaSmoothingFloor
         + (1.0f - extremaSmoothingFloor)
