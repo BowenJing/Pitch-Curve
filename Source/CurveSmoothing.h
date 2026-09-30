@@ -85,7 +85,11 @@ float valueAt(float position, int smooth, int pointCount,
     const float halfRange = 0.5f * (localMaximum - localMinimum);
     const float extremeness = std::clamp(
         std::abs(linear - localMidpoint) / halfRange, 0.0f, 1.0f);
-    const float rangePreservation = 1.0f - extremeness * extremeness;
+    constexpr float extremaSmoothingFloor = 0.18f;
+    const float rangePreservation =
+        extremaSmoothingFloor
+        + (1.0f - extremaSmoothingFloor)
+            * (1.0f - extremeness * extremeness);
 
     static constexpr std::array<float, 11> perceptualBlend {
         0.0f, 0.25f, 0.36f, 0.47f, 0.57f, 0.66f,
