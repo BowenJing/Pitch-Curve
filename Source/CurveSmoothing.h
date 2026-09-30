@@ -60,7 +60,10 @@ float valueAt(float position, int smooth, int pointCount,
         0, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6
     };
     const int radius = windowRadius[static_cast<size_t>(smooth)];
-    const float sampleSpacing = 1.0f / static_cast<float>(uniquePointCount);
+    // Keep the time footprint independent of source point density. Sparse
+    // learned contours must not receive a much wider brush than dense hand
+    // drawing, and dense contours must remain visibly smooth.
+    constexpr float sampleSpacing = 1.0f / 256.0f;
     float localMinimum = linear;
     float localMaximum = linear;
     float weightedValue = 0.0f;
