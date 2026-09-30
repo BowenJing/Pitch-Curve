@@ -77,21 +77,25 @@ int main()
         return 1;
     }
 
-    constexpr double ultrasonicSampleRate = 96000.0;
-    juce::AudioBuffer<float> ultrasonic(
-        1, static_cast<int>(ultrasonicSampleRate));
-    phase = 0.0;
-    for (int sample = 0; sample < ultrasonic.getNumSamples(); ++sample)
+    for (const double ultrasonicSampleRate :
+         { 96000.0, 192000.0, 384000.0, 768000.0 })
     {
-        phase += juce::MathConstants<double>::twoPi * 47000.0
-               / ultrasonicSampleRate;
-        ultrasonic.setSample(0, sample,
-                             static_cast<float>(0.9 * std::sin(phase)));
-    }
-    if (! PitchDetector::analyse(ultrasonic, ultrasonicSampleRate).points.empty())
-    {
-        std::cerr << "Ultrasonic content must not alias into a learned pitch\n";
-        return 1;
+        juce::AudioBuffer<float> ultrasonic(
+            1, static_cast<int>(ultrasonicSampleRate));
+        phase = 0.0;
+        for (int sample = 0; sample < ultrasonic.getNumSamples(); ++sample)
+        {
+            phase += juce::MathConstants<double>::twoPi * 47000.0
+                   / ultrasonicSampleRate;
+            ultrasonic.setSample(0, sample,
+                                 static_cast<float>(0.9 * std::sin(phase)));
+        }
+        if (! PitchDetector::analyse(ultrasonic, ultrasonicSampleRate).points.empty())
+        {
+            std::cerr << "Ultrasonic content at " << ultrasonicSampleRate
+                      << " Hz must not alias into a learned pitch\n";
+            return 1;
+        }
     }
 
     juce::AudioBuffer<float> silence(1, 4096);

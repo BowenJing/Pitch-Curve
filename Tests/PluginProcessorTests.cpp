@@ -257,7 +257,11 @@ bool testStateRoundTripAndBounds()
     }
 
     const auto nonFiniteParameterState = makeRawXmlState(
-        "<?xml version=\"1.0\"?><PARAMETERS amount=\"NaN\" smooth=\"NaN\"/>");
+        "<?xml version=\"1.0\"?><PARAMETERS>"
+        "<PARAM id=\"amount\" value=\"NaN\"/>"
+        "<PARAM id=\"smooth\" value=\"NaN\"/>"
+        "<PARAM id=\"unknown\" value=\"NaN\"/>"
+        "</PARAMETERS>");
     restored.setStateInformation(nonFiniteParameterState.getData(),
                                  static_cast<int>(nonFiniteParameterState.getSize()));
     const float restoredAmount =

@@ -56,6 +56,7 @@ float median(std::vector<float> values)
 juce::AudioBuffer<float> downsampleForAnalysis(const juce::AudioBuffer<float>& input,
                                                 int inputChannel,
                                                 double sourceRate,
+                                                float maximumPitchHz,
                                                 std::function<bool()>& shouldCancel)
 {
     const double ratio = sourceRate / maximumAnalysisSampleRate;
@@ -67,7 +68,9 @@ juce::AudioBuffer<float> downsampleForAnalysis(const juce::AudioBuffer<float>& i
 
     // A fourth-order Butterworth low-pass prevents ultrasonic content from
     // folding into the detector's pitch range before rate conversion.
-    constexpr double cutoffHz = maximumAnalysisSampleRate * 0.45;
+    const double cutoffHz = juce::jmin(
+        maximumAnalysisSampleRate * 0.45,
+        juce::jmax(100.0, static_cast<double>(maximumPitchHz) * 1.5));
     LowPassSection first(sourceRate, cutoffHz, 0.541196100146197);
     LowPassSection second(sourceRate, cutoffHz, 1.306562964876377);
     const auto sanitize = [] (float sample)
@@ -227,7 +230,7 @@ PitchAnalysis PitchDetector::analyse(const juce::AudioBuffer<float>& audio,
     if (sampleRate > maximumAnalysisSampleRate)
     {
         downsampled = downsampleForAnalysis(audio, analysisChannel,
-                                            sampleRate, shouldCancel);
+                                            sampleRate, maximumHz, shouldCancel);
         if (downsampled.getNumSamples() == 0)
             return {};
         analysisAudio = &downsampled;

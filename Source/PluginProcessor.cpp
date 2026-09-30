@@ -199,7 +199,6 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
 
     bool hasHostTransport = false;
     bool transportStopped = false;
-    bool transportStarting = false;
     int64_t timelineSample = freeRunningSample + stretcher.inputLatency();
     if (auto* hostPlayHead = getPlayHead();
         hostPlayHead != nullptr && wrapperType != wrapperType_Standalone)
@@ -218,10 +217,7 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
             else
             {
                 if (! hostWasPlaying)
-                {
                     hostPlaybackSample = 0;
-                    transportStarting = true;
-                }
                 hostWasPlaying = true;
                 timelineSample = hostPlaybackSample + stretcher.inputLatency();
             }
@@ -230,10 +226,7 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
         {
             transportStopped = false;
             if (! hostWasPlaying)
-            {
                 hostPlaybackSample = 0;
-                transportStarting = true;
-            }
             hostWasPlaying = true;
             timelineSample = hostPlaybackSample + stretcher.inputLatency();
         }
@@ -252,13 +245,6 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
                 timelineSample = stretcher.inputLatency();
             }
         }
-    }
-    if (transportStarting)
-    {
-        // Do not leak spectral or delayed audio from the previous transport
-        // run into a new play/bounce pass.
-        stretcher.reset();
-        bypassDelay.reset();
     }
     displayPlaying.store(! hasHostTransport || ! transportStopped,
                          std::memory_order_relaxed);
@@ -515,6 +501,24 @@ void ContourAudioProcessor::setStateInformation(const void* data, int size)
         };
         sanitizeParameter("amount", 1.0f, 0.0f, 2.0f);
         sanitizeParameter("smooth", 5.0f, 0.0f, 10.0f);
+        for (int i = parameterState.getNumChildren(); --i >= 0;)
+        {
+            auto parameter = parameterState.getChild(i);
+            if (! parameter.hasType("PARAM"))
+                continue;
+            const auto id = parameter.getProperty("id").toString();
+            const float fallback = id == "amount" ? 1.0f : 5.0f;
+            const float maximum = id == "amount" ? 2.0f : 10.0f;
+            if (id != "amount" && id != "smooth")
+            {
+                parameterState.removeChild(i, nullptr);
+                continue;
+            }
+            float value = static_cast<float>(parameter.getProperty("value", fallback));
+            if (! std::isfinite(value))
+                value = fallback;
+            parameter.setProperty("value", juce::jlimit(0.0f, maximum, value), nullptr);
+        }
         state.replaceState(parameterState);
     }
 }
