@@ -1,0 +1,157 @@
+-- The C compiler identification is AppleClang 17.0.0.17000013
+-- The CXX compiler identification is AppleClang 17.0.0.17000013
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring juceaide
+-- Building juceaide
+-- Exporting juceaide
+-- Testing juceaide
+-- Finished setting up juceaide
+Command line invocation:
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/xcodebuild -project signalsmith_stretch-populate.xcodeproj build -configuration Debug -parallelizeTargets -hideShellScriptEnvironment -target ALL_BUILD
+
+ComputePackagePrebuildTargetDependencyGraph
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (3 targets)
+    Target 'ALL_BUILD' in project 'signalsmith_stretch-populate'
+        ➜ Explicit dependency on target 'signalsmith_stretch-populate' in project 'signalsmith_stretch-populate'
+        ➜ Explicit dependency on target 'ZERO_CHECK' in project 'signalsmith_stretch-populate'
+    Target 'signalsmith_stretch-populate' in project 'signalsmith_stretch-populate'
+        ➜ Explicit dependency on target 'ZERO_CHECK' in project 'signalsmith_stretch-populate'
+    Target 'ZERO_CHECK' in project 'signalsmith_stretch-populate' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -x c -c /dev/null
+
+Build description signature: 0143241c121a9213d106861cfc20a645
+Build description path: /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/XCBuildData/0143241c121a9213d106861cfc20a645.xcbuilddata
+CreateBuildDirectory /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/signalsmith_stretch-populate.xcodeproj
+    builtin-create-build-directory /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-E3FC5CF436839D2C9EA4672E.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-E3FC5CF436839D2C9EA4672E.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-D8FFA5CCA3ADFDB4EF5F0C17.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-D8FFA5CCA3ADFDB4EF5F0C17.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-F4C6FF0DE5CB3C49A4417C94.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-F4C6FF0DE5CB3C49A4417C94.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-BCE2550016F4A1AF41890F14.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-BCE2550016F4A1AF41890F14.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-9F5FA75FECA1E88F161ED442.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-9F5FA75FECA1E88F161ED442.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-8981E22E1A0F326C69DC33DE.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-8981E22E1A0F326C69DC33DE.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-713FF93A1DC275221EB3560A.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-713FF93A1DC275221EB3560A.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-665DCAFB932300B250BF8995.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-665DCAFB932300B250BF8995.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-666DB7CB93E93AAA21EA6A00.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-666DB7CB93E93AAA21EA6A00.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-60827EE66DF6944ED9DCF851.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-60827EE66DF6944ED9DCF851.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/ZERO_CHECK.build/Script-41314B5688358841D9815573.sh (in target 'ZERO_CHECK' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/ZERO_CHECK.build/Script-41314B5688358841D9815573.sh
+
+WriteAuxiliaryFile /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/ALL_BUILD.build/Script-0C1E5B82FE9CBC3A0CF2D7BE.sh (in target 'ALL_BUILD' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    write-file /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/ALL_BUILD.build/Script-0C1E5B82FE9CBC3A0CF2D7BE.sh
+
+CreateBuildDirectory /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/EagerLinkingTBDs/Debug
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/signalsmith_stretch-populate.xcodeproj
+    builtin-create-build-directory /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/EagerLinkingTBDs/Debug
+
+CreateBuildDirectory /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/Debug
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/signalsmith_stretch-populate.xcodeproj
+    builtin-create-build-directory /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/Debug
+
+PhaseScriptExecution Generate\ CMakeFiles/ZERO_CHECK /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/ZERO_CHECK.build/Script-41314B5688358841D9815573.sh (in target 'ZERO_CHECK' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    /bin/sh -c /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/ZERO_CHECK.build/Script-41314B5688358841D9815573.sh
+make: `/Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/CMakeFiles/cmake.check_cache' is up to date.
+
+PhaseScriptExecution Generate\ signalsmith_stretch-populate-prefix/src/signalsmith_stretch-populate-stamp/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/signalsmith_stretch-populate-mkdir /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-665DCAFB932300B250BF8995.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    /bin/sh -c /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-665DCAFB932300B250BF8995.sh
+
+PhaseScriptExecution Generate\ signalsmith_stretch-populate-prefix/src/signalsmith_stretch-populate-stamp/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/signalsmith_stretch-populate-download /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-8981E22E1A0F326C69DC33DE.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+    cd /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild
+    /bin/sh -c /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-8981E22E1A0F326C69DC33DE.sh
+Cloning into 'signalsmith_stretch-src'...
+fatal: unable to access 'https://git.signalsmith-audio.co.uk/Signalsmith-Audio/signalsmith-stretch.git/': The requested URL returned error: 502
+Cloning into 'signalsmith_stretch-src'...
+fatal: unable to access 'https://git.signalsmith-audio.co.uk/Signalsmith-Audio/signalsmith-stretch.git/': The requested URL returned error: 502
+Cloning into 'signalsmith_stretch-src'...
+fatal: unable to access 'https://git.signalsmith-audio.co.uk/Signalsmith-Audio/signalsmith-stretch.git/': The requested URL returned error: 502
+Had to git clone more than once: 3 times.
+CMake Error at signalsmith_stretch-subbuild/signalsmith_stretch-populate-prefix/tmp/signalsmith_stretch-populate-gitclone.cmake:55 (message):
+  Failed to clone repository:
+
+    'https://git.signalsmith-audio.co.uk/Signalsmith-Audio/signalsmith-stretch.git'
+
+
+Command PhaseScriptExecution failed with a nonzero exit code
+
+note: Run script build phase 'Generate signalsmith_stretch-populate-prefix/src/signalsmith_stretch-populate-stamp/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/signalsmith_stretch-populate-update' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+note: Run script build phase 'Generate signalsmith_stretch-populate-prefix/src/signalsmith_stretch-populate-stamp/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/signalsmith_stretch-populate-patch' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+note: Run script build phase 'Generate CMakeFiles/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/signalsmith_stretch-populate-complete' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+note: Run script build phase 'Generate CMakeFiles/signalsmith_stretch-populate' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+note: Run script build phase 'Generate CMakeFiles/ZERO_CHECK' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'ZERO_CHECK' from project 'signalsmith_stretch-populate')
+note: Run script build phase 'Generate CMakeFiles/ALL_BUILD' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'ALL_BUILD' from project 'signalsmith_stretch-populate')
+** BUILD FAILED **
+
+
+The following build commands failed:
+	PhaseScriptExecution Generate\ signalsmith_stretch-populate-prefix/src/signalsmith_stretch-populate-stamp/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/signalsmith_stretch-populate-download /Users/runner/work/Pitch-Curve/Pitch-Curve/build/_deps/signalsmith_stretch-subbuild/build/signalsmith_stretch-populate.build/Debug/signalsmith_stretch-populate.build/Script-8981E22E1A0F326C69DC33DE.sh (in target 'signalsmith_stretch-populate' from project 'signalsmith_stretch-populate')
+(1 failure)
+
+CMake Error at /opt/homebrew/share/cmake/Modules/FetchContent.cmake:1933 (message):
+  Build step for signalsmith_stretch failed: 65
+Call Stack (most recent call first):
+  /opt/homebrew/share/cmake/Modules/FetchContent.cmake:1622 (__FetchContent_populateSubbuild)
+  /opt/homebrew/share/cmake/Modules/FetchContent.cmake:2160:EVAL:2 (__FetchContent_doPopulation)
+  /opt/homebrew/share/cmake/Modules/FetchContent.cmake:2160 (cmake_language)
+  /opt/homebrew/share/cmake/Modules/FetchContent.cmake:2401 (__FetchContent_Populate)
+  CMakeLists.txt:31 (FetchContent_MakeAvailable)
+
+
+-- Configuring incomplete, errors occurred!
