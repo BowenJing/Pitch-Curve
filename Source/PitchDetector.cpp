@@ -9,6 +9,40 @@ constexpr int frameSize = 2048;
 constexpr int hopSize = 512;
 constexpr double maximumAnalysisSampleRate = 48000.0;
 
+class LowPassSection
+{
+public:
+    LowPassSection(double sampleRate, double cutoffHz, double q)
+    {
+        const double angle = juce::MathConstants<double>::twoPi * cutoffHz / sampleRate;
+        const double cosine = std::cos(angle);
+        const double alpha = std::sin(angle) / (2.0 * q);
+        const double inverseA0 = 1.0 / (1.0 + alpha);
+        b0 = 0.5 * (1.0 - cosine) * inverseA0;
+        b1 = (1.0 - cosine) * inverseA0;
+        b2 = b0;
+        a1 = -2.0 * cosine * inverseA0;
+        a2 = (1.0 - alpha) * inverseA0;
+    }
+
+    float process(float input)
+    {
+        const double output = b0 * input + z1;
+        z1 = b1 * input - a1 * output + z2;
+        z2 = b2 * input - a2 * output;
+        return std::isfinite(output) ? static_cast<float>(output) : 0.0f;
+    }
+
+private:
+    double b0 = 0.0;
+    double b1 = 0.0;
+    double b2 = 0.0;
+    double a1 = 0.0;
+    double a2 = 0.0;
+    double z1 = 0.0;
+    double z2 = 0.0;
+};
+
 float median(std::vector<float> values)
 {
     if (values.empty())
@@ -28,31 +62,46 @@ juce::AudioBuffer<float> downsampleForAnalysis(const juce::AudioBuffer<float>& i
     const int outputSamples = static_cast<int>(
         std::floor(static_cast<double>(input.getNumSamples()) / ratio));
     juce::AudioBuffer<float> output(1, juce::jmax(0, outputSamples));
+    if (outputSamples <= 0)
+        return output;
 
-    for (int outputSample = 0; outputSample < outputSamples; ++outputSample)
+    // A fourth-order Butterworth low-pass prevents ultrasonic content from
+    // folding into the detector's pitch range before rate conversion.
+    constexpr double cutoffHz = maximumAnalysisSampleRate * 0.45;
+    LowPassSection first(sourceRate, cutoffHz, 0.541196100146197);
+    LowPassSection second(sourceRate, cutoffHz, 1.306562964876377);
+    const auto sanitize = [] (float sample)
     {
-        if ((outputSample & 1023) == 0 && shouldCancel && shouldCancel())
+        return std::isfinite(sample) ? sample : 0.0f;
+    };
+    const float initial = sanitize(input.getSample(inputChannel, 0));
+    float previousFiltered = initial;
+    for (int i = 0; i < 64; ++i)
+        previousFiltered = second.process(first.process(initial));
+
+    int outputSample = 0;
+    double nextOutputPosition = 0.0;
+    for (int inputSample = 0;
+         inputSample < input.getNumSamples() && outputSample < outputSamples;
+         ++inputSample)
+    {
+        if ((inputSample & 4095) == 0 && shouldCancel && shouldCancel())
             return {};
 
-        const double start = outputSample * ratio;
-        const double end = juce::jmin(static_cast<double>(input.getNumSamples()),
-                                      (outputSample + 1) * ratio);
-        const int firstInput = static_cast<int>(std::floor(start));
-        const int finalInput = static_cast<int>(std::ceil(end));
-        double sum = 0.0;
-        double totalWeight = 0.0;
-        for (int inputSample = firstInput; inputSample < finalInput; ++inputSample)
+        const float filtered = second.process(first.process(
+            sanitize(input.getSample(inputChannel, inputSample))));
+        while (outputSample < outputSamples
+               && nextOutputPosition <= static_cast<double>(inputSample))
         {
-            const double weight = juce::jmax(
-                0.0, juce::jmin(end, inputSample + 1.0) - juce::jmax(start, static_cast<double>(inputSample)));
-            if (inputSample >= 0 && inputSample < input.getNumSamples())
-            {
-                sum += input.getSample(inputChannel, inputSample) * weight;
-                totalWeight += weight;
-            }
+            const float fraction = inputSample == 0
+                ? 0.0f
+                : static_cast<float>(nextOutputPosition - (inputSample - 1));
+            output.setSample(0, outputSample,
+                             previousFiltered + fraction * (filtered - previousFiltered));
+            ++outputSample;
+            nextOutputPosition = static_cast<double>(outputSample) * ratio;
         }
-        output.setSample(0, outputSample,
-                         totalWeight > 0.0 ? static_cast<float>(sum / totalWeight) : 0.0f);
+        previousFiltered = filtered;
     }
     return output;
 }

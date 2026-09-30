@@ -256,6 +256,22 @@ bool testStateRoundTripAndBounds()
         return false;
     }
 
+    const auto nonFiniteParameterState = makeRawXmlState(
+        "<?xml version=\"1.0\"?><PARAMETERS amount=\"NaN\" smooth=\"NaN\"/>");
+    restored.setStateInformation(nonFiniteParameterState.getData(),
+                                 static_cast<int>(nonFiniteParameterState.getSize()));
+    const float restoredAmount =
+        restored.parameters().getRawParameterValue("amount")->load();
+    const float restoredSmooth =
+        restored.parameters().getRawParameterValue("smooth")->load();
+    if (! std::isfinite(restoredAmount) || ! std::isfinite(restoredSmooth)
+        || std::abs(restoredAmount - 1.0f) > 1.0e-6f
+        || std::abs(restoredSmooth - 5.0f) > 1.0e-6f)
+    {
+        std::cerr << "Non-finite session parameters must be replaced safely\n";
+        return false;
+    }
+
     ContourAudioProcessor bounded;
     bounded.setContour({ { 0.25f, -5000.0f, 1.0f },
                          { 0.75f, 5000.0f, 1.0f } }, 1.0f);
@@ -401,6 +417,32 @@ bool testStoppedTransportResetsDisplay()
     if (processor.getPlayheadPosition() > 0.01f)
     {
         std::cerr << "Restarted transport must restart the curve from its beginning\n";
+        return false;
+    }
+    return true;
+}
+
+bool testOfflineRenderAdvancesContour()
+{
+    ContourAudioProcessor processor;
+    processor.setNonRealtime(true);
+    processor.prepareToPlay(48000.0, 128);
+    processor.setContour({ { 0.0f, -20.0f, 1.0f },
+                           { 1.0f, 20.0f, 1.0f } }, 1.0f);
+
+    TestPlayHead playHead;
+    playHead.position.setIsPlaying(false);
+    processor.setPlayHead(&playHead);
+    juce::AudioBuffer<float> block(2, 128);
+    block.clear();
+    juce::MidiBuffer midi;
+    for (int i = 0; i < 100; ++i)
+        processor.processBlock(block, midi);
+
+    if (! processor.isPlayheadRunning()
+        || processor.getPlayheadPosition() < 0.1f)
+    {
+        std::cerr << "Offline DAW rendering must advance the contour\n";
         return false;
     }
     return true;
@@ -677,6 +719,7 @@ int main()
         || ! testStateRoundTripAndBounds()
         || ! testDefaultsAndDurationLimit()
         || ! testStoppedTransportResetsDisplay()
+        || ! testOfflineRenderAdvancesContour()
         || ! testSmoothScaleEndpoints()
         || ! testConcurrentCurvePublication())
         return 1;

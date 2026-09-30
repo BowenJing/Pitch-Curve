@@ -199,6 +199,7 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
 
     bool hasHostTransport = false;
     bool transportStopped = false;
+    bool transportStarting = false;
     int64_t timelineSample = freeRunningSample + stretcher.inputLatency();
     if (auto* hostPlayHead = getPlayHead();
         hostPlayHead != nullptr && wrapperType != wrapperType_Standalone)
@@ -207,7 +208,7 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
         transportStopped = true;
         if (const auto position = hostPlayHead->getPosition())
         {
-            transportStopped = ! position->getIsPlaying();
+            transportStopped = ! position->getIsPlaying() && ! isNonRealtime();
             if (transportStopped)
             {
                 hostPlaybackSample = 0;
@@ -217,10 +218,24 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
             else
             {
                 if (! hostWasPlaying)
+                {
                     hostPlaybackSample = 0;
+                    transportStarting = true;
+                }
                 hostWasPlaying = true;
                 timelineSample = hostPlaybackSample + stretcher.inputLatency();
             }
+        }
+        else if (isNonRealtime())
+        {
+            transportStopped = false;
+            if (! hostWasPlaying)
+            {
+                hostPlaybackSample = 0;
+                transportStarting = true;
+            }
+            hostWasPlaying = true;
+            timelineSample = hostPlaybackSample + stretcher.inputLatency();
         }
         else
         {
@@ -237,6 +252,13 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
                 timelineSample = stretcher.inputLatency();
             }
         }
+    }
+    if (transportStarting)
+    {
+        // Do not leak spectral or delayed audio from the previous transport
+        // run into a new play/bounce pass.
+        stretcher.reset();
+        bypassDelay.reset();
     }
     displayPlaying.store(! hasHostTransport || ! transportStopped,
                          std::memory_order_relaxed);
@@ -481,6 +503,18 @@ void ContourAudioProcessor::setStateInformation(const void* data, int size)
         auto parameterState = root.createCopy();
         if (const auto curve = parameterState.getChildWithName("CONTOUR"); curve.isValid())
             parameterState.removeChild(curve, nullptr);
+        const auto sanitizeParameter = [&parameterState]
+            (const juce::Identifier& name, float fallback, float minimum, float maximum)
+        {
+            float value = fallback;
+            if (parameterState.hasProperty(name))
+                value = static_cast<float>(parameterState.getProperty(name));
+            if (! std::isfinite(value))
+                value = fallback;
+            parameterState.setProperty(name, juce::jlimit(minimum, maximum, value), nullptr);
+        };
+        sanitizeParameter("amount", 1.0f, 0.0f, 2.0f);
+        sanitizeParameter("smooth", 5.0f, 0.0f, 10.0f);
         state.replaceState(parameterState);
     }
 }

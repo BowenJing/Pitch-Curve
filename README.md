@@ -109,8 +109,9 @@ When no contour exists or Amount is 0%, audio is sample-identical after the
 fixed latency reported to the host. Keeping that latency constant prevents PDC
 changes while a session is playing. With a contour active, the only DSP stage
 is the pitch transposer; there is no EQ, compression, saturation, stereo
-widening, or hidden gain processing. Pitch commands use a 25 ms ramp and
-effect transitions use a 10 ms crossfade to avoid zipper noise and clicks.
+widening, or hidden gain processing. Pitch commands follow the same displayed
+curve at 64-sample control intervals without a hidden pitch ramp. Effect
+transitions use a 10 ms crossfade to avoid zipper noise and clicks.
 
 No pitch shifter can promise zero artifacts for every signal. This
 implementation uses Signalsmith Stretch's phase-coherent spectral processing,

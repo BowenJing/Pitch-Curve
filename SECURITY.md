@@ -14,7 +14,9 @@ Defensive limits:
 - Reader sample rates and channel counts are validated before allocation.
 - Decoding is split into bounded chunks and analysis checks cancellation
   between frames when the editor closes.
-- Restored state is capped at 2 MiB and 4,096 validated contour points.
+- Restored state is capped at a 2 MiB envelope and 1 MiB XML payload, with at
+  most 4,096 validated contour points.
+- Restored parameters must be finite and are clamped to their public ranges.
 - Non-finite and out-of-range contour values are discarded or clamped.
 - Unexpected oversized DAW blocks are processed in fixed-size chunks without
   allocating or accessing outside the prepared scratch buffer.
