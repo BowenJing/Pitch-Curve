@@ -330,6 +330,17 @@ bool testStoppedTransportResetsDisplay()
         return false;
     }
 
+    const float positionBeforeGap = processor.getPlayheadPosition();
+    playHead.positionAvailable = false;
+    processor.processBlock(block, midi);
+    if (! processor.isPlayheadRunning()
+        || processor.getPlayheadPosition() <= positionBeforeGap)
+    {
+        std::cerr << "A transient host position gap must not restart playback\n";
+        return false;
+    }
+
+    playHead.positionAvailable = true;
     playHead.position.setIsPlaying(false);
     processor.processBlock(block, midi);
     if (std::abs(processor.getPlayheadPosition()) > 1.0e-6f)

@@ -494,7 +494,8 @@ bool AudioWaveformView::setFile(const juce::File& file)
     std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(file));
     if (reader == nullptr || ! std::isfinite(reader->sampleRate)
         || reader->sampleRate < 8000.0 || reader->sampleRate > 768000.0
-        || reader->lengthInSamples <= 0 || reader->numChannels == 0)
+        || reader->lengthInSamples <= 0
+        || reader->numChannels == 0 || reader->numChannels > 64)
         return false;
 
     const auto maximumSamples = juce::jmin<int64_t>(
@@ -1032,7 +1033,8 @@ void ContourAudioProcessorEditor::run()
         if (reader != nullptr && ! threadShouldExit()
             && std::isfinite(reader->sampleRate)
             && reader->sampleRate >= 8000.0 && reader->sampleRate <= 768000.0
-            && reader->lengthInSamples > 0 && reader->numChannels > 0)
+            && reader->lengthInSamples > 0
+            && reader->numChannels > 0 && reader->numChannels <= 64)
         {
             constexpr double maximumLengthSeconds = 60.0;
             constexpr int64_t maximumDecodedSamples = 12000000;

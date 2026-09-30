@@ -224,9 +224,18 @@ void ContourAudioProcessor::processBlockInternal(juce::AudioBuffer<float>& buffe
         }
         else
         {
-            hostPlaybackSample = 0;
-            hostWasPlaying = false;
-            timelineSample = stretcher.inputLatency();
+            // Several hosts can briefly omit PositionInfo while their transport
+            // is still running (for example during a loop or graph rebuild).
+            // Preserve an established run across that transient gap, but keep
+            // an unavailable initial position stopped.
+            transportStopped = ! hostWasPlaying;
+            if (hostWasPlaying)
+                timelineSample = hostPlaybackSample + stretcher.inputLatency();
+            else
+            {
+                hostPlaybackSample = 0;
+                timelineSample = stretcher.inputLatency();
+            }
         }
     }
     displayPlaying.store(! hasHostTransport || ! transportStopped,
