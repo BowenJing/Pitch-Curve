@@ -74,7 +74,8 @@ jobs:
           )
           for binary in "${binaries[@]}"; do
             test -f "$binary"
-            lipo -verify_arch arm64 x86_64 "$binary"
+            lipo "$binary" -verify_arch arm64 x86_64 \
+              2>&1 | tee -a "$RUNNER_TEMP/macos-build.log"
           done
           pkgbuild --root "$stage" \
             --identifier audio.circus.pitchcurve \
